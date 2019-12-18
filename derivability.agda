@@ -1,4 +1,4 @@
-{-# OPTIONS --prop #-}
+{-# OPTIONS --prop --rewriting #-}
 
 open import common
 open import syntx
@@ -20,11 +20,11 @@ their sort. Indexing judgments by sorts is very good to get rid of absurd cases,
 judgments are supposed to have certain sorts.
 -}
 
-data Judgment (Σ : Signature) (n : ℕ) : JudgmentSort → Set where
-  _⊢_ : (Γ : Ctx Σ n) → TyExpr Σ n → Judgment Σ n Ty
-  _⊢_:>_ : (Γ : Ctx Σ n) → TmExpr Σ n → TyExpr Σ n → Judgment Σ n Tm
-  _⊢_==_ : (Γ : Ctx Σ n) → TyExpr Σ n → TyExpr Σ n → Judgment Σ n Ty=
-  _⊢_==_:>_ : (Γ : Ctx Σ n) → TmExpr Σ n → TmExpr Σ n → TyExpr Σ n → Judgment Σ n Tm=
+data Judgment (Σ : Signature) {n : ℕ} (Γ : Ctx Σ n) (m : ℕ) : JudgmentSort → Set where
+  _⊢_ : (Δ : DepCtx Σ n m) → TyExpr Σ (n + m) → Judgment Σ Γ m Ty
+  _⊢_:>_ : (Δ : DepCtx Σ n m) → TmExpr Σ (n + m) → TyExpr Σ (n + m) → Judgment Σ Γ m Tm
+  _⊢_==_ : (Δ : DepCtx Σ n m) → TyExpr Σ (n + m) → TyExpr Σ (n + m) → Judgment Σ Γ m Ty=
+  _⊢_==_:>_ : (Δ : DepCtx Σ n m) → TmExpr Σ (n + m) → TmExpr Σ (n + m) → TyExpr Σ (n + m) → Judgment Σ Γ m Tm=
 
 
 {-
@@ -32,11 +32,6 @@ A derivation rule consists of an arity, a size (the length of the context of the
 the rule itself, which is a partial function from tuples of judgments to judgments, everything
 being of the right sort and in the correct context-length.
 -}
-
-data DerivationRulePremises (Σ : Signature) (n : ℕ) : JudgmentArityArgs → Set where
-  [] : DerivationRulePremises Σ n []
-  _∷_ : {m : ℕ} {k : JudgmentSort} {args : JudgmentArityArgs} → Judgment Σ (m + n) k
-      → DerivationRulePremises Σ n args → DerivationRulePremises Σ n ((m , k) ∷ args)
 
 record _⊂_ (Σ Σ' : Signature) : Set where
   constructor make⊂
@@ -50,13 +45,20 @@ id⊂ $ x = x
 _∘_ : {Σ Σ' Σ'' : Signature} → Σ' ⊂ Σ'' → Σ ⊂ Σ' → Σ ⊂ Σ''
 (g ∘ f) $ x = g $ (f $ x)
 
+
+{-# NO_UNIVERSE_CHECK #-}
+data DerivationRule2 (Σ : Signature) {n : ℕ} (Γ : Ctx Σ n) : (args : JudgmentArityArgs) (kfin : JudgmentSort) → Set where
+  last : {k : JudgmentSort} → Judgment Σ Γ 0 k → DerivationRule2 Σ Γ [] k
+  next : {m : ℕ} {k kfin : JudgmentSort} {args : JudgmentArityArgs} → (Judgment Σ Γ m k → Partial (DerivationRule2 Σ Γ args kfin)) → DerivationRule2 Σ Γ ((m , k) ∷ args) kfin
+
 record DerivationRule (Σ : Signature) (ar : JudgmentArity) : Set₁ where
   field
-    rule : {Σ' : Signature} → Σ ⊂ Σ' → {n : ℕ} → Ctx Σ' n → DerivationRulePremises Σ' n (args ar) → Partial (Judgment Σ' n (sort ar))
+    rule : {Σ' : Signature} → Σ ⊂ Σ' → {n : ℕ} (Γ : Ctx Σ' n) → DerivationRule2 Σ' Γ (args ar) (sort ar)
 open DerivationRule public
 
 ↑DerivationRule : {Σ Σ' : Signature} → Σ ⊂ Σ' → {ar : JudgmentArity} → DerivationRule Σ ar → DerivationRule Σ' ar
-DerivationRule.rule (↑DerivationRule f record { rule = rule }) g = rule (g ∘ f)
+rule (↑DerivationRule ↑1 r) ↑2 = rule r (↑2 ∘ ↑1)
+
 
 {- A derivability structure consists of a bunch of derivation rules -}
 
@@ -66,46 +68,81 @@ record DerivabilityStructure (Σ : Signature) : Set₁ where
     derivationRule : {ar : JudgmentArity} (r : Rules ar) → DerivationRule Σ ar
 open DerivabilityStructure public
 
+
 {-
 A judgment is derivable in a given derivability structure if it can be obtained by applying rules.
 So given a rule [r] and a list of judgments [js] that can be applied to it, if the judgments [js]
 are all derivable and the rule is defined at [js], then the result of the rule is derivable.
 
-The type [DerivableArgs E js] represents the fact that all of the judgments is [js] are derivables.
+The type [DerivableArgs E js] represents the fact that all of the judgments in [js] are derivable.
+-}
+
+module _ {Σ : Signature} {n : ℕ} {Γ : Ctx Σ n} {m : ℕ} {k : JudgmentSort} where
+
+  flattenCtx : Judgment Σ Γ (suc m) k → Ctx Σ (suc n)
+  flattenCtx ((X , Δ) ⊢ A)           = (Γ , X)
+  flattenCtx ((X , Δ) ⊢ u :> A)      = (Γ , X)
+  flattenCtx ((X , Δ) ⊢ A == B)      = (Γ , X)
+  flattenCtx ((X , Δ) ⊢ u == v :> A) = (Γ , X)
+
+  flatten : (j : Judgment Σ Γ (suc m) k) → Judgment Σ {n = suc n} (flattenCtx j) m k
+  flatten ((X , Δ) ⊢ A)           = Δ ⊢ A
+  flatten ((X , Δ) ⊢ u :> A)      = Δ ⊢ u :> A
+  flatten ((X , Δ) ⊢ A == B)      = Δ ⊢ A == B
+  flatten ((X , Δ) ⊢ u == v :> A) = Δ ⊢ u == v :> A
+
+
+{- Derivability
+
+[Derivable E j] is true iff the judgment [j] is derivable in [E]. There are two ways a judgment can
+be derivable:
+- either it is a judgment with a non-trivial dependent context, in which case we simply move the
+  types of the dependent context to the normal context
+- or it’s a type with a trivial dependent context, in which case we apply a typing rule.
+
+[Apply E r j] is true iff the judgment [j] (with trivial dependent context) can be obtained using
+the rule [r] to derivable judgments:
+- either the rule is of the form [last j], in which case it is trivial
+- or the rule is of the form [next f], in which case we need a judgment [j] corresponding to the
+  first argument of [f], we need [f j] to be defined, [j] to be derivable, and we recursively use
+  [Apply] to [f j].
 -}
 
 data Derivable {Σ : Signature} (E : DerivabilityStructure Σ)
-     : {n : ℕ} {k : JudgmentSort} → Judgment Σ n k → Prop
+     : {n : ℕ} {Γ : Ctx Σ n} {m : ℕ} {k : JudgmentSort} → Judgment Σ Γ m k → Prop
 
-data DerivableArgs {Σ : Signature} (E : DerivabilityStructure Σ) {n : ℕ}
-     : {ar : JudgmentArityArgs} → DerivationRulePremises Σ n ar → Prop where
-  []  : DerivableArgs E []
-  _∷_ : {m : ℕ} {k : JudgmentSort} {j : Judgment Σ (m + n) k}
-        {ar : JudgmentArityArgs} {js : DerivationRulePremises Σ n ar}
-        → Derivable E j → DerivableArgs E js
-        → DerivableArgs E (j ∷ js)
+{-# NO_UNIVERSE_CHECK #-}
+data Apply {Σ : Signature} (E : DerivabilityStructure Σ)
+           {n : ℕ} {Γ : Ctx Σ n} {k : JudgmentSort}
+           : {ar : JudgmentArityArgs} → DerivationRule2 Σ Γ ar k → Judgment Σ Γ 0 k → Prop where
+  last : (j : Judgment Σ Γ 0 k) → Apply E (last j) j
+  next : {m : ℕ} {ar : _} (f : Judgment Σ Γ m k → Partial (DerivationRule2 Σ Γ ar k)) (jj : Judgment Σ Γ 0 k) (j : Judgment Σ Γ m k)
+       → (def : isDefined (f j))
+       → Derivable E j
+       → Apply E (f j $ def) jj
+       → Apply E (next f) jj
 
 data Derivable {Σ} E where
-  apply : {ar : JudgmentArity} (r : Rules E ar) {n : ℕ} {js : DerivationRulePremises Σ n (args ar)}
-          (js-der : DerivableArgs E js) (Γ : Ctx Σ n) (def : isDefined (rule (derivationRule E r) id⊂ Γ js))
-          → Derivable E (rule (derivationRule E r) id⊂ Γ js $ def)
+  apply : {n : ℕ} {Γ : Ctx Σ n} {k : JudgmentSort} {j : Judgment Σ Γ 0 k}
+          {args : JudgmentArityArgs} (r : Rules E (mkarity args k))
+          → Apply E (rule (derivationRule E r) id⊂ Γ) j
+          → Derivable E j
+  flat : {n : ℕ} {Γ : Ctx Σ n} {m : ℕ} {k : JudgmentSort} {j : Judgment Σ Γ (suc m) k} → Derivable E (flatten j) → Derivable E j
+
 
 {- We now define the structural rules -}
 
 module _ (Σ : Signature) where
 
-  -- VarRule : {n : ℕ} → VarPos n → DerivationRule Σ (mkarity ((0 , Ty) ∷ []) Tm)
-  -- rule (VarRule k) ↑ Γ (Γ' ⊢ A ∷ []) =
-  --   do
-  --     assume (Γ ≡ Γ')
-  --     assume (get k Γ ≡ A)
-  --     return (Γ' ⊢ var k :> A)
+  VarRule : (n : ℕ) → DerivationRule Σ (mkarity ((0 , Ty) ∷ []) Tm)
+  rule (VarRule k) ↑ Γ =
+    (next (λ {(◇ ⊢ A) → do
+       (k' , A') ← get k Γ
+       assume (A' ≡ A)
+       return (last (◇ ⊢ var k' :> A))}))
 
   TyReflRule : DerivationRule Σ (mkarity ((0 , Ty) ∷ []) Ty=)
-  rule TyReflRule ↑ Γ' ((Γ ⊢ A) ∷ []) =
-    do
-      assume (Γ ≡ Γ')
-      return (Γ ⊢ A == A)
+  rule TyReflRule ↑ Γ = next (λ {(◇ ⊢ A) → return (last (◇ ⊢ A == A))})
 
   {-
   This one and the next one could be simplified, I just wanted to check that the full version is
@@ -113,52 +150,74 @@ module _ (Σ : Signature) where
   -}
 
   TySymmRule : DerivationRule Σ (mkarity ((0 , Ty) ∷ (0 , Ty) ∷ (0 , Ty=) ∷ []) Ty=)
-  rule TySymmRule ↑ Γ₀ ((Γ'' ⊢ A') ∷ (Γ' ⊢ B') ∷ (Γ ⊢ A == B) ∷ []) =
-    do
-      assume (Γ ≡ Γ')
-      assume (Γ' ≡ Γ)
+  rule TySymmRule ↑ Γ =
+    (next (λ {(◇ ⊢ A) → return
+    (next (λ {(◇ ⊢ B) → return
+    (next (λ {(◇ ⊢ A' == B') → do
       assume (A ≡ A')
       assume (B ≡ B')
-      return (Γ ⊢ B == A)
+      return (last (◇ ⊢ B' == A'))}))}))}))
 
-  TyTranRule : DerivationRule Σ (mkarity ((0 , Ty) ∷ (0 , Ty) ∷ (0 , Ty) ∷ (0 , Ty=) ∷ (0 , Ty=) ∷ []) Ty=)
-  rule TyTranRule ↑ Γ₀ ((Γ'''' ⊢ A') ∷ (Γ''' ⊢ B'') ∷ (Γ'' ⊢ C')
-                       ∷ (Γ ⊢ A == B) ∷ (Γ' ⊢ B' == C) ∷ []) =
-    do
-      assume (Γ ≡ Γ')
-      assume (Γ' ≡ Γ'')
-      assume (Γ'' ≡ Γ''')
-      assume (Γ''' ≡ Γ'''')
-      assume (A ≡ A')
-      assume (B ≡ B')
-      assume (B' ≡ B'')
-      assume (C ≡ C')
-      return (Γ ⊢ A == C)
+--   -- TODO
+--   TyTranRule : DerivationRule Σ (mkarity ((0 , Ty) ∷ (0 , Ty) ∷ (0 , Ty) ∷ (0 , Ty=) ∷ (0 , Ty=) ∷ []) Ty=)
+--   rule TyTranRule ↑ Γ₀ ((Γ'''' ⊢ A') ∷ (Γ''' ⊢ B'') ∷ (Γ'' ⊢ C')
+--                        ∷ (Γ ⊢ A == B) ∷ (Γ' ⊢ B' == C) ∷ []) =
+--     do
+--       assume (Γ ≡ Γ')
+--       assume (Γ' ≡ Γ'')
+--       assume (Γ'' ≡ Γ''')
+--       assume (Γ''' ≡ Γ'''')
+--       assume (A ≡ A')
+--       assume (B ≡ B')
+--       assume (B' ≡ B'')
+--       assume (C ≡ C')
+--       return (Γ ⊢ A == C)
 
   ConvRule : DerivationRule Σ (mkarity ((0 , Tm) ∷ (0 , Ty=) ∷ []) Tm)
-  rule ConvRule ↑ Γ₀ ((Γ ⊢ u :> A) ∷ ((Γ' ⊢ A' == B) ∷ [])) =
-    do
-      assume (Γ ≡ Γ')
+  rule ConvRule ↑ Γ =
+    (next (λ { (◇ ⊢ u :> A) → return
+    (next (λ { (◇ ⊢ A' == B) → do
       assume (A ≡ A')
-      return (Γ ⊢ u :> B)
+      return
+       (last (◇ ⊢ u :> B))}))}))
+
+  ConvEqRule : DerivationRule Σ (mkarity ((0 , Tm=) ∷ (0 , Ty=) ∷ []) Tm=)
+  rule ConvEqRule ↑ Γ =
+    (next (λ { (◇ ⊢ u == v :> A) → return
+    (next (λ { (◇ ⊢ A' == B) → do
+      assume (A ≡ A')
+      return
+       (last (◇ ⊢ u == v :> B))}))}))
+
+  {-
+  Small hack to make our life easier, the implicit argument [ar] of [StructuralRulesType] is
+  automatically inferred from the definition of [StructuralRules], but for that they need to be
+  mutually recursive
+  -}
 
   StructuralRules : DerivabilityStructure Σ
 
-  data StructuralRulesType : JudgmentArity → Set where
---    var : (k : VarPos n) → StructuralRulesType _
-    tyRefl : StructuralRulesType _
-    tySymm : StructuralRulesType _
-    tyTran : StructuralRulesType _
-    conv : StructuralRulesType _
-    TODO : StructuralRulesType (mkarity [] Ty)
-    
-  Rules StructuralRules = StructuralRulesType
---  derivationRule StructuralRules (var k) = VarRule k
+  data StructuralRulesType : {ar : JudgmentArity} → Set where
+    var : (k : ℕ) → StructuralRulesType
+    conv : StructuralRulesType
+    convEq : StructuralRulesType
+    tyRefl : StructuralRulesType
+    tySymm : StructuralRulesType
+    -- tyTran : StructuralRulesType
+    -- tmRefl : StructuralRulesType
+    -- tmSymm : StructuralRulesType
+    -- tmTran : StructuralRulesType
+
+  Rules StructuralRules ar = StructuralRulesType {ar}
+  derivationRule StructuralRules (var k) = VarRule k
+  derivationRule StructuralRules conv = ConvRule
+  derivationRule StructuralRules convEq = ConvEqRule
   derivationRule StructuralRules tyRefl = TyReflRule
   derivationRule StructuralRules tySymm = TySymmRule
-  derivationRule StructuralRules tyTran = TyTranRule
-  derivationRule StructuralRules conv = ConvRule
-  derivationRule StructuralRules TODO = {!!}
+  -- derivationRule StructuralRules tyTran = {!TyTranRule!}
+  -- derivationRule StructuralRules tmRefl = {!TmReflRule!}
+  -- derivationRule StructuralRules tmSymm = {!TmSymmRule!}
+  -- derivationRule StructuralRules tmTran = {!TmTranRule!}
 
 
 {- Typing rules for basic metavariables -}
@@ -167,7 +226,7 @@ record BMTypingRule {Σ : Signature} (E : DerivabilityStructure Σ) : Set where
   constructor bmtypingrule
   field
     type : TyExpr Σ 0
-    der : Derivable E (◇ ⊢ type)
+    der : Derivable E {Γ = ◇} (◇ ⊢ type)
 open BMTypingRule public
 
 {- Arities for the symbols and the rules corresponding to basic metavariables -}
@@ -241,8 +300,8 @@ Symbols (ExtSig Σ ar) = ExtSigSymbols  module _ where
     prev : {ar0 : SyntaxArity} → Symbols Σ ar0 → ExtSigSymbols ar0
     new : ExtSigSymbols ar
 
-⊂Ext : {Σ : Signature} {ar : SyntaxArity} → Σ ⊂ ExtSig Σ ar
-⊂Ext = make⊂ prev
+⊂Ext : {Σ Σ' : Signature} {ar : SyntaxArity} → ExtSig Σ ar ⊂ Σ' → Σ ⊂ Σ'
+⊂Ext ↑ = ↑ ∘ make⊂ prev
 
 extend : {Σ : Signature} (E : DerivabilityStructure Σ)
          {ar : SyntaxArity}
@@ -256,7 +315,7 @@ Rules (extend E {ar} t c) = Ext (Rules E) ar  module _ where
     typingrule : Ext A arnew (TArity arnew)
     congruencerule : Ext A arnew (CArity arnew)
 
-derivationRule (extend E t c) (prev r) = ↑DerivationRule ⊂Ext (derivationRule E r)
+derivationRule (extend E t c) (prev r) = ↑DerivationRule (⊂Ext id⊂) (derivationRule E r)
 derivationRule (extend E t c) typingrule = t
 derivationRule (extend E t c) congruencerule = c
 
@@ -265,17 +324,17 @@ extend₀ : {Σ : Signature} (E : DerivabilityStructure Σ)
          {ar : SyntaxArity}
          → DerivabilityStructure (ExtSig Σ ar)
 Rules (extend₀ E) = Rules E
-derivationRule (extend₀ E) r = ↑DerivationRule ⊂Ext (derivationRule E r)
+derivationRule (extend₀ E) r = ↑DerivationRule (⊂Ext id⊂) (derivationRule E r)
 
 BMTypingRule-TRule : {Σ : Signature} (E : DerivabilityStructure Σ)
                      (t : BMTypingRule E)
                      → DerivationRule (ExtSig Σ BMArity) BMArityJ
-rule (BMTypingRule-TRule E t) ↑ Γ [] = return (Γ ⊢ sym (↑ $ new) [] :> weaken^ (↑Expr ↑ (↑Expr ⊂Ext (type t))))
+rule (BMTypingRule-TRule E t) ↑ Γ = last (◇ ⊢ sym (↑ $ new) [] :> weaken^ (↑Expr (⊂Ext ↑) (type t)))
 
 BMTypingRule-CRule : {Σ : Signature} (E : DerivabilityStructure Σ)
                      (t : BMTypingRule E)
                      → DerivationRule (ExtSig Σ BMArity) BMArityJ=
-rule (BMTypingRule-CRule E t) ↑ Γ [] = return (Γ ⊢ sym (↑ $ new) [] == sym (↑ $ new) [] :> weaken^ (↑Expr ↑ (↑Expr ⊂Ext (type t))))
+rule (BMTypingRule-CRule E t) ↑ Γ = last (◇ ⊢ sym (↑ $ new) [] == sym (↑ $ new) [] :> weaken^ (↑Expr (⊂Ext ↑) (type t)))
 
 {- Arity (and arityArgs) of a metavariable -}
 
@@ -295,7 +354,7 @@ MSymbols Σ n k = Symbols Σ (MArity n k)
 data MTypingRule : {Σ : Signature} (E : DerivabilityStructure Σ) (n : ℕ) (k : SyntaxSort) → Set
   where
   []Ty : {Σ : Signature} {E : DerivabilityStructure Σ} → MTypingRule E 0 Ty
-  []Tm : {Σ : Signature} {E : DerivabilityStructure Σ} → (type : TyExpr Σ 0) (der : Derivable E (◇ ⊢ type)) → MTypingRule E 0 Tm
+  []Tm : {Σ : Signature} {E : DerivabilityStructure Σ} → (type : TyExpr Σ 0) (der : Derivable E {Γ = ◇} (◇ ⊢ type)) → MTypingRule E 0 Tm
   _∷_ : {Σ : Signature} {E : DerivabilityStructure Σ} → {n : ℕ} {k : _} (t : BMTypingRule E)
       → MTypingRule (extend E (BMTypingRule-TRule E t) (BMTypingRule-CRule E t)) n k
       → MTypingRule E (suc n) k
@@ -307,9 +366,17 @@ data MTypingRule : {Σ : Signature} (E : DerivabilityStructure Σ) (n : ℕ) (k 
 MTypingRule-TRule : {Σ : Signature} (E : DerivabilityStructure Σ) {n : ℕ} {k : SyntaxSort}
                     (t : MTypingRule E n k)
                   → DerivationRule (ExtSig Σ (MArity n k)) (mkarity ([0,Tm]^J n) (SStoJS k))
-rule (MTypingRule-TRule E []Ty) ↑ Γ [] = return (Γ ⊢ (sym (↑ $ new) []))
-rule (MTypingRule-TRule E ([]Tm type der)) ↑ Γ [] = return (Γ ⊢ sym (↑ $ new) [] :> ↑Expr ↑ (↑Expr ⊂Ext (weaken^ type)))
-rule (MTypingRule-TRule E (bt ∷ t)) ↑ Γ (j ∷ js) = {!where things happen!}
+rule (MTypingRule-TRule E []Ty) ↑ Γ = last (◇ ⊢ sym (↑ $ new) [])
+rule (MTypingRule-TRule E ([]Tm type der)) ↑ Γ = last (◇ ⊢ (sym (↑ $ new) []) :> (weaken^ (↑Expr (⊂Ext ↑) type)))
+rule (MTypingRule-TRule E (bt ∷ t)) ↑ Γ =
+  next (λ {(◇ ⊢ a :> A) → do
+    assume {!type bt == A!}
+    return (rule (MTypingRule-TRule E {!substitution a / s in t!}) {!↑!} Γ)})
+-- rule (MTypingRule-TRule E []Ty) ↑ Γ [] = return (Γ ⊢ (sym (↑ $ new) []))
+-- rule (MTypingRule-TRule E ([]Tm type der)) ↑ Γ [] = return (Γ ⊢ sym (↑ $ new) [] :> ↑Expr ↑ (↑Expr ⊂Ext (weaken^ type)))
+-- rule (MTypingRule-TRule E (bt ∷ t)) ↑ Γ (Γ' ⊢ a :> T ∷ js) = do
+--   assume {!type bt!}
+--   rule (MTypingRule-TRule E {!!}) ↑ Γ {!!}
 
 
 {- Example, A type and x : A ⊢ B type -}
@@ -328,7 +395,7 @@ module _ where
   E₁ = extend E₀ (MTypingRule-TRule E₀ TypingRuleA) {!MTypingRule-CRule E₀ TypingRuleA!}
 
   TypingRuleB : MTypingRule E₁ 1 Ty
-  TypingRuleB = bmtypingrule (sym new []) (apply typingrule [] ◇ tt) ∷ []Ty
+  TypingRuleB = bmtypingrule (sym new []) (apply typingrule (last (◇ ⊢ sym new []))) ∷ []Ty
 
   E₂ : DerivabilityStructure _
   E₂ = extend E₁ (MTypingRule-TRule E₁ TypingRuleB) {!!}

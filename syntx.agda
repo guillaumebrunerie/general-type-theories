@@ -91,12 +91,25 @@ weaken^ : {Σ : Signature} {n : ℕ} → TyExpr Σ 0 → TyExpr Σ n
 weaken^ {n = zero} e = e
 weaken^ {n = suc n} e = weakenL (weaken^ e)
 
-{- Raw contexts -}
+{- Raw contexts in a scope
+   [Ctx Σ n k] represents contexts in signature Σ, in scope n, of length k
+-}
 
 data Ctx (Σ : Signature) : ℕ → Set where
   ◇ : Ctx Σ 0
   _,_ : {n : ℕ} (Γ : Ctx Σ n) (A : TyExpr Σ n) → Ctx Σ (suc n)
 
-get : {Σ : Signature} {n : ℕ} (k : VarPos n) → Ctx Σ n → TyExpr Σ n
-get last (Γ , A) = weakenL A
-get (prev k) (Γ , A) = weakenL (get k Γ)
+data DepCtx (Σ : Signature) (n : ℕ) : ℕ → Set where
+  ◇ : DepCtx Σ n 0
+  _,_ : {k : ℕ} (A : TyExpr Σ n) → DepCtx Σ (suc n) k → DepCtx Σ n (suc k)
+
+get : {Σ : Signature} {n : ℕ} (k : ℕ) → Ctx Σ n → Partial (VarPos n × TyExpr Σ n)
+get k ◇ = fail
+get zero (Γ , A) = return (last , weakenL A)
+get (suc k) (Γ , X) = do
+  (k' , A) ← get k Γ
+  return (prev k' , weakenL A)
+
+-- get : {Σ : Signature} {n : ℕ} (k : VarPos n) → Ctx Σ n → TyExpr Σ n
+-- get last (Γ , A) = weakenL A
+-- get (prev k) (Γ , A) = weakenL (get k Γ)

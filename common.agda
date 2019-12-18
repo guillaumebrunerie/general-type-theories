@@ -14,9 +14,9 @@ postulate
 
 postulate
   +S-rewrite : {n m : ℕ} → (m + suc n) ↦ (suc (m + n))
---  +O-rewrite : {n : ℕ} → (n + zero) ↦ n
+  +O-rewrite : {n : ℕ} → (n + zero) ↦ n
   {-# REWRITE +S-rewrite #-}
---  {-# REWRITE +O-rewrite #-}
+  {-# REWRITE +O-rewrite #-}
 
 
 {- Cartesian product -}
@@ -32,20 +32,31 @@ infixr 42 _×_
 infixr 4 _,_
 
 
-{- Σ-types in Prop -}
+{- Σ-types -}
 
-record Σ (A : Prop) (B : A → Prop) : Prop where
+record ΣP (A : Prop) (B : A → Prop) : Prop where
   constructor _,_
   field
     fst : A
     snd : B fst
-open Σ public
+open ΣP public
+
+record ΣS (A : Set) (B : A → Set) : Set where
+  constructor _,_
+  field
+    fst : A
+    snd : B fst
+open ΣS public
 
 
-{- Truth -}
+{- True -}
 
 record ⊤ : Prop where
   constructor tt
+
+{- False -}
+
+data ⊥ : Prop where
 
 
 {- Prop-valued equality -}
@@ -101,6 +112,8 @@ record Monad {ℓ ℓ'} (M : Set ℓ → Set ℓ') : Set (lsuc ℓ ⊔ ℓ') whe
   _>>_ : {A B : Set ℓ} → M A → M B → M B
   a >> b = a >>= (λ _ → b)
 
+  infixr 20 _>>_
+
 open Monad {{…}} public
 
 
@@ -117,13 +130,16 @@ instance
   PartialityMonad : Monad Partial
   isDefined (return {{ PartialityMonad }} x) = ⊤
   return {{ PartialityMonad }} x Partial.$ tt = x
-  isDefined (_>>=_ {{ PartialityMonad }} a f) = Σ (isDefined a) (λ x → isDefined (f (a $ x)))
+  isDefined (_>>=_ {{ PartialityMonad }} a f) = ΣP (isDefined a) (λ x → isDefined (f (a $ x)))
   _>>=_ {{ PartialityMonad }} a f Partial.$ x = f (a $ fst x) $ snd x
 
 assume : (P : Prop) → Partial (Box P)
 isDefined (assume P) = P
-unbox (assume P Partial.$ x) = x
-  
+unbox (assume P $ x) = x
+
+fail : {A : Set} → Partial A
+isDefined fail = ⊥
+fail $ ()
 
 {- Axioms -}
 
