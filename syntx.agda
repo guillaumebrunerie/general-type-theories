@@ -1,4 +1,4 @@
-{-# OPTIONS --prop --rewriting #-}
+{-# OPTIONS --rewriting --prop #-}
 
 open import common
 
@@ -31,8 +31,8 @@ SyntaxArityArgs = ArityArgs SyntaxSort
 SyntaxArity = Arity SyntaxSort
 
 {-
-A signature consists of symbols, which are indexed by their arities. The other solution to have a
-set of symbols and an arity function is very inconvenient for some reason.
+A signature consists of symbols, which are indexed by their arities. To have instead a set of
+symbols and an arity function is very inconvenient.
 -}
 
 record Signature : Set₁ where
@@ -41,23 +41,23 @@ record Signature : Set₁ where
 open Signature public
 
 {-
-Expressions are indexed by their syntactic class and their scope-length. An expression is either a
-variable or a symbol applied to the appropriate number of arguments.
-The type [Expr Σ n] is defined simultaneously with the type [generateArgs Σ n args] which represents
-the type of the arguments of a symbol with arity (args, _). 
+Expressions are indexed by their syntactic class and their scope. An expression is either a variable
+or a symbol applied to the appropriate number of arguments.
+The type [Expr Σ n] is defined simultaneously with the type [Args Σ n args] which represents the
+type of the arguments of a symbol with arity (args, _). 
 -}
 
-data Expr (Σ : Signature) (n : ℕ) : SyntaxSort → Set
+data Args (Σ : Signature) (n : ℕ) : SyntaxArityArgs → Set
 
-data generateArgs (Σ : Signature) (n : ℕ) : SyntaxArityArgs → Set where
-  [] : generateArgs Σ n []
-  _∷_ : {m : ℕ} {k : SyntaxSort} {args : SyntaxArityArgs}
-      → Expr Σ (m + n) k → generateArgs Σ n args
-      → generateArgs Σ n ((m , k) ∷ args)
-
-data Expr Σ n where
+data Expr (Σ : Signature) (n : ℕ) : SyntaxSort → Set where
   var : VarPos n → Expr Σ n Tm
-  sym : {ar : SyntaxArity} (s : Symbols Σ ar) → generateArgs Σ n (args ar) → Expr Σ n (sort ar)
+  sym : {ar : SyntaxArity} (s : Symbols Σ ar) → Args Σ n (args ar) → Expr Σ n (sort ar)
+
+data Args Σ n where
+  [] : Args Σ n []
+  _∷_ : {m : ℕ} {k : SyntaxSort} {args : SyntaxArityArgs}
+      → Expr Σ (m + n) k → Args Σ n args
+      → Args Σ n ((m , k) ∷ args)
 
 {- Abbreviations for type-/term-expressions -}
 
@@ -75,8 +75,8 @@ weakenV last (prev k) = last
 weakenV (prev x) (prev k) = prev (weakenV x k)
 
 weaken : {Σ : Signature} {n : ℕ} {k : SyntaxSort} → Expr Σ n k → WeakPos n → Expr Σ (suc n) k
-weakenA : {Σ : Signature} {n : ℕ} {ar : SyntaxArityArgs} → generateArgs Σ n ar
-            → WeakPos n → generateArgs Σ (suc n) ar
+weakenA : {Σ : Signature} {n : ℕ} {ar : SyntaxArityArgs} → Args Σ n ar
+            → WeakPos n → Args Σ (suc n) ar
 
 weaken (var x) k = var (weakenV x k)
 weaken (sym s args) k = sym s (weakenA args k)
@@ -87,25 +87,42 @@ weakenA (e ∷ args) k = weaken e (weakenWeakPos _ k) ∷ weakenA args k
 weakenL : {Σ : Signature} {n : ℕ} {k : SyntaxSort} → Expr Σ n k → Expr Σ (suc n) k
 weakenL e = weaken e last
 
-weaken^ : {Σ : Signature} {n : ℕ} → TyExpr Σ 0 → TyExpr Σ n
+weaken^ : {Σ : Signature} {k : _} {n : ℕ} → Expr Σ 0 k → Expr Σ n k
 weaken^ {n = zero} e = e
 weaken^ {n = suc n} e = weakenL (weaken^ e)
 
-{- Raw contexts in a scope
-   [Ctx Σ n k] represents contexts in signature Σ, in scope n, of length k
--}
+postulate
+  weaken≤ : {Σ : Signature} {k : _} {n m : ℕ} {{_ : n ≤ m}} → Expr Σ n k → Expr Σ m k
+
+{- Contexts, [Ctx Σ n] represents contexts in signature [Σ] and of length [n] -}
 
 data Ctx (Σ : Signature) : ℕ → Set where
   ◇ : Ctx Σ 0
   _,_ : {n : ℕ} (Γ : Ctx Σ n) (A : TyExpr Σ n) → Ctx Σ (suc n)
 
+{-
+Dependent contexts, [DepCtx Σ n m] represents contexts in signature [Σ], in scope [n], and of
+length [m]. They are built in the other direction compared to [Ctx], we add types to the left
+instead of adding them to the right. The reason is that the "purpose" of dependent contexts is to
+move the types one by one to the context on the left.
+-}
+
 data DepCtx (Σ : Signature) (n : ℕ) : ℕ → Set where
   ◇ : DepCtx Σ n 0
-  _,_ : {k : ℕ} (A : TyExpr Σ n) → DepCtx Σ (suc n) k → DepCtx Σ n (suc k)
+  _,_ : {m : ℕ} (A : TyExpr Σ n) → DepCtx Σ (suc n) m → DepCtx Σ n (suc m)
 
-get : {Σ : Signature} {n : ℕ} (k : ℕ) → Ctx Σ n → Partial (VarPos n × TyExpr Σ n)
+{-
+Extraction of types from contexts.
+We need this partial version instead of the total well-typed one (below, not used).
+-}
+
+get : {Σ : Signature} {n : ℕ} (k : ℕ) → Ctx Σ n → Partial (Lift (VarPos n × TyExpr Σ n))
 get k ◇ = fail
-get zero (Γ , A) = return (last , weakenL A)
+get zero (Γ , A) = return (lift (last , weakenL A))
 get (suc k) (Γ , X) = do
-  (k' , A) ← get k Γ
-  return (prev k' , weakenL A)
+  (lift (k' , A)) ← get k Γ
+  return (lift (prev k' , weakenL A))
+
+getTotal : {Σ : Signature} {n : ℕ} (k : VarPos n) → Ctx Σ n → TyExpr Σ n
+getTotal last (Γ , A) = weakenL A
+getTotal (prev k) (Γ , X) = weakenL (getTotal k Γ)

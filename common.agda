@@ -1,7 +1,7 @@
 {-# OPTIONS --rewriting --prop #-}
 
 open import Agda.Primitive public
-open import Agda.Builtin.Nat public renaming (Nat to ℕ) hiding (_==_; _<_)
+open import Agda.Builtin.Nat public renaming (Nat to ℕ) hiding (_==_)
 open import Agda.Builtin.List public
 open import Agda.Builtin.Bool public
 
@@ -11,12 +11,6 @@ open import Agda.Builtin.Bool public
 postulate
   _↦_ : ∀ {l} {A : Set l} → A → A → Set l
 {-# BUILTIN REWRITE _↦_ #-}
-
-postulate
-  +S-rewrite : {n m : ℕ} → (m + suc n) ↦ (suc (m + n))
-  +O-rewrite : {n : ℕ} → (n + zero) ↦ n
-  {-# REWRITE +S-rewrite #-}
-  {-# REWRITE +O-rewrite #-}
 
 
 {- Cartesian product -}
@@ -54,12 +48,13 @@ open ΣS public
 record ⊤ : Prop where
   constructor tt
 
+
 {- False -}
 
 data ⊥ : Prop where
 
 
-{- Prop-valued equality -}
+{- Equality -}
 
 data _≡_ {l} {A : Set l} (x : A) : A → Prop l where
   instance refl : x ≡ x
@@ -79,13 +74,19 @@ infixr 4 _∙_
 ! refl = refl
 
 
-{- Lifting from Prop to Set -}
+{- Lifting from Prop/Set to Set₁ -}
 
-record Box {l} (P : Prop l) : Set l where
+record Box (P : Prop) : Set₁ where
   constructor box
   field
     unbox : P
 open Box public
+
+record Lift (A : Set) : Set₁ where
+  constructor lift
+  field
+    unlift : A
+open Lift public
 
 
 {- Finite sets -}
@@ -101,6 +102,7 @@ data WeakPos : ℕ → Set where
 weakenWeakPos : {n : ℕ} (m : ℕ) → WeakPos n → WeakPos (m + n)
 weakenWeakPos zero k = k
 weakenWeakPos (suc m) k = prev (weakenWeakPos m k)
+
 
 {- Monads -}
 
@@ -119,7 +121,7 @@ open Monad {{…}} public
 
 {- The partiality monad -}
 
-record Partial (A : Set) : Set₁ where
+record Partial (A : Set₁) : Set₁ where
   field
     isDefined : Prop
     _$_ : isDefined → A
@@ -137,22 +139,42 @@ assume : (P : Prop) → Partial (Box P)
 isDefined (assume P) = P
 unbox (assume P $ x) = x
 
-fail : {A : Set} → Partial A
+fail : {A : Set₁} → Partial A
 isDefined fail = ⊥
-fail $ ()
 
-{- Axioms -}
+
+{- Rewrite rules for the natural numbers (!) -}
 
 postulate
-  -- Dependent function extensionality
-  funext  : ∀ {l l'} {A : Set l}  {B : A → Set l'} {f g : (a : A) → B a} (h : (x : A) → f x ≡ g x) → f ≡ g
+  +S-rewrite : {n m : ℕ} → (m + suc n) ↦ (suc (m + n))
+  +O-rewrite : {n : ℕ} → (n + zero) ↦ n
+  {-# REWRITE +S-rewrite #-}
+  {-# REWRITE +O-rewrite #-}
 
-  -- Dependent function extensionality for function with domain Prop, does not seem to follow from [funext]
-  funextP : ∀ {l l'} {A : Prop l} {B : A → Set l'} {f g : (a : A) → B a} (h : (x : A) → f x ≡ g x) → f ≡ g
 
-  -- Dependent function extensionality for implicit function spaces
-  funextI : ∀ {l l'} {A : Set l} {B : A → Set l'} {f g : {a : A} → B a} (h : (x : A) → f {x} ≡ g {x}) → (λ {x} → f {x}) ≡ (λ {x} → g {x})
+{- Properties of the natural numbers -}
 
-  -- Propositional extensionality
-  prop-ext : {A B : Prop} (f : A → B) (g : B → A) → A ≡ B
+data _≤_ : (n m : ℕ) → Prop where
+  instance ≤0 : {n : ℕ} → 0 ≤ n
+  ≤S : {n m : ℕ} → n ≤ m → suc n ≤ suc m
 
+instance
+  ≤r : {n : ℕ} → n ≤ n
+  ≤r {zero} = ≤0
+  ≤r {suc n} = ≤S ≤r
+
+instance
+  ≤+ : {n m : ℕ} → n ≤ (m + n)
+  ≤+ {zero} {m} = ≤0
+  ≤+ {suc n} {m} = ≤S ≤+
+
+instance
+  ≤tr : {n m k : ℕ} {{_ : n ≤ m}} {{_ : m ≤ k}} → n ≤ k
+  ≤tr ⦃ ≤0 ⦄ ⦃ q ⦄ = ≤0
+  ≤tr ⦃ ≤S p ⦄ ⦃ ≤S q ⦄ = ≤S (≤tr ⦃ p ⦄ ⦃ q ⦄)
+
+
+{- Instance arguments -}
+
+⟨⟩ : {A : Prop} {{a : A}} → A
+⟨⟩ {{a}} = a
