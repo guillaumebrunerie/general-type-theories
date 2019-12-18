@@ -74,7 +74,7 @@ weakenV x last = prev x
 weakenV last (prev k) = last
 weakenV (prev x) (prev k) = prev (weakenV x k)
 
-weaken : {Σ : Signature} {n : ℕ} {s : SyntaxSort} → Expr Σ n s → WeakPos n → Expr Σ (suc n) s
+weaken : {Σ : Signature} {n : ℕ} {k : SyntaxSort} → Expr Σ n k → WeakPos n → Expr Σ (suc n) k
 weakenA : {Σ : Signature} {n : ℕ} {ar : SyntaxArityArgs} → generateArgs Σ n ar
             → WeakPos n → generateArgs Σ (suc n) ar
 
@@ -84,7 +84,7 @@ weaken (sym s args) k = sym s (weakenA args k)
 weakenA [] k = []
 weakenA (e ∷ args) k = weaken e (weakenWeakPos _ k) ∷ weakenA args k
 
-weakenL : {Σ : Signature} {n : ℕ} {s : SyntaxSort} → Expr Σ n s → Expr Σ (suc n) s
+weakenL : {Σ : Signature} {n : ℕ} {k : SyntaxSort} → Expr Σ n k → Expr Σ (suc n) k
 weakenL e = weaken e last
 
 weaken^ : {Σ : Signature} {n : ℕ} → TyExpr Σ 0 → TyExpr Σ n
@@ -109,7 +109,3 @@ get zero (Γ , A) = return (last , weakenL A)
 get (suc k) (Γ , X) = do
   (k' , A) ← get k Γ
   return (prev k' , weakenL A)
-
--- get : {Σ : Signature} {n : ℕ} (k : VarPos n) → Ctx Σ n → TyExpr Σ n
--- get last (Γ , A) = weakenL A
--- get (prev k) (Γ , A) = weakenL (get k Γ)

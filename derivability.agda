@@ -36,7 +36,7 @@ being of the right sort and in the correct context-length.
 record _⊂_ (Σ Σ' : Signature) : Set where
   constructor make⊂
   field
-    _$_ : {ar : SyntaxArity} → Symbols Σ ar → Symbols Σ' ar
+    _$_ : {n : ℕ} {k : SyntaxSort} → Expr Σ n k → Expr Σ' n k
 open _⊂_ public
 
 id⊂ : {Σ : Signature} → Σ ⊂ Σ
@@ -253,18 +253,13 @@ Those derivation rules are actually parametrized by the context, so we have ((n 
 derivation rules in both cases.
 -}
 
-↑Expr : {Σ Σ' : Signature} (↑ : Σ ⊂ Σ') {n : ℕ} {k : SyntaxSort} → Expr Σ n k → Expr Σ' n k
 ↑Args : {Σ Σ' : Signature} (↑ : Σ ⊂ Σ') {n : ℕ} {ar : SyntaxArityArgs} → generateArgs Σ n ar → generateArgs Σ' n ar
-
-↑Expr ↑ (var x) = var x
-↑Expr (make⊂ ↑) (sym s x) = sym (↑ s) (↑Args (make⊂ ↑) x)
-
 ↑Args ↑ [] = []
-↑Args ↑ (x ∷ l) = ↑Expr ↑ x ∷ ↑Args ↑ l
+↑Args ↑ (x ∷ l) = (↑ $ x) ∷ ↑Args ↑ l
 
 ↑Ctx : {Σ Σ' : Signature} (↑ : Σ ⊂ Σ') {n : ℕ} → Ctx Σ n → Ctx Σ' n
 ↑Ctx ↑ ◇ = ◇
-↑Ctx ↑ (Γ , A) = (↑Ctx ↑ Γ , ↑Expr ↑ A)
+↑Ctx ↑ (Γ , A) = (↑Ctx ↑ Γ , ↑ $ A)
 
 
 {-
@@ -300,8 +295,17 @@ Symbols (ExtSig Σ ar) = ExtSigSymbols  module _ where
     prev : {ar0 : SyntaxArity} → Symbols Σ ar0 → ExtSigSymbols ar0
     new : ExtSigSymbols ar
 
+⊂Ext0 : {Σ : Signature} {ar : SyntaxArity} → Σ ⊂ ExtSig Σ ar
+⊂Ext1 : {Σ : Signature} {n : ℕ} {ar : SyntaxArity} {args : SyntaxArityArgs} → generateArgs Σ n args → generateArgs (ExtSig Σ ar) n args
+
+⊂Ext0 $ var x = var x
+⊂Ext0 $ sym s x = sym (prev s) (⊂Ext1 x)
+
+⊂Ext1 [] = []
+⊂Ext1 (e ∷ es) = (⊂Ext0 $ e) ∷ ⊂Ext1 es
+
 ⊂Ext : {Σ Σ' : Signature} {ar : SyntaxArity} → ExtSig Σ ar ⊂ Σ' → Σ ⊂ Σ'
-⊂Ext ↑ = ↑ ∘ make⊂ prev
+⊂Ext ↑ = ↑ ∘ ⊂Ext0
 
 extend : {Σ : Signature} (E : DerivabilityStructure Σ)
          {ar : SyntaxArity}
@@ -329,12 +333,12 @@ derivationRule (extend₀ E) r = ↑DerivationRule (⊂Ext id⊂) (derivationRul
 BMTypingRule-TRule : {Σ : Signature} (E : DerivabilityStructure Σ)
                      (t : BMTypingRule E)
                      → DerivationRule (ExtSig Σ BMArity) BMArityJ
-rule (BMTypingRule-TRule E t) ↑ Γ = last (◇ ⊢ sym (↑ $ new) [] :> weaken^ (↑Expr (⊂Ext ↑) (type t)))
+rule (BMTypingRule-TRule E t) ↑ Γ = last (◇ ⊢ (↑ $ sym new []) :> ((⊂Ext ↑) $ weaken^ (type t)))
 
 BMTypingRule-CRule : {Σ : Signature} (E : DerivabilityStructure Σ)
                      (t : BMTypingRule E)
                      → DerivationRule (ExtSig Σ BMArity) BMArityJ=
-rule (BMTypingRule-CRule E t) ↑ Γ = last (◇ ⊢ sym (↑ $ new) [] == sym (↑ $ new) [] :> weaken^ (↑Expr (⊂Ext ↑) (type t)))
+rule (BMTypingRule-CRule E t) ↑ Γ = last (◇ ⊢ (↑ $ sym new []) == (↑ $ sym new []) :> ((⊂Ext ↑) $ weaken^ (type t)))
 
 {- Arity (and arityArgs) of a metavariable -}
 
@@ -363,15 +367,25 @@ data MTypingRule : {Σ : Signature} (E : DerivabilityStructure Σ) (n : ℕ) (k 
 [0,Tm]^J zero = []
 [0,Tm]^J (suc n) = (0 , Tm) ∷ [0,Tm]^J n
 
+extend↑ : {Σ Σ' : Signature} {n : ℕ} {k : SyntaxSort} → TmExpr Σ' {!!} → ExtSig Σ (MArity (suc n) k) ⊂ Σ' → ExtSig Σ (MArity n k) ⊂ Σ'
+extend↑2 : {Σ Σ' : Signature} {n m : ℕ} {k : SyntaxSort} {args : SyntaxArityArgs} → TmExpr Σ' {!!} → generateArgs (ExtSig Σ (MArity n k)) m args → generateArgs (ExtSig Σ (MArity (suc n) k)) m args
+
+extend↑ a ↑ $ var k = var k
+extend↑ a ↑ $ sym (prev s) x = {!↑ $ (sym (prev s) {!(extend↑2 a x)!})!}
+extend↑ a ↑ $ sym new x = {!sym new ({!⊂Ext0 $ (weaken^ a)!} ∷ extend↑2 ↑ a x)!}
+
+extend↑2 a [] = []
+extend↑2 a (e ∷ es) = {!(extend↑ ↑ a $ e) ∷ extend↑2 ↑ a es!}
+
 MTypingRule-TRule : {Σ : Signature} (E : DerivabilityStructure Σ) {n : ℕ} {k : SyntaxSort}
                     (t : MTypingRule E n k)
                   → DerivationRule (ExtSig Σ (MArity n k)) (mkarity ([0,Tm]^J n) (SStoJS k))
-rule (MTypingRule-TRule E []Ty) ↑ Γ = last (◇ ⊢ sym (↑ $ new) [])
-rule (MTypingRule-TRule E ([]Tm type der)) ↑ Γ = last (◇ ⊢ (sym (↑ $ new) []) :> (weaken^ (↑Expr (⊂Ext ↑) type)))
+rule (MTypingRule-TRule E []Ty) ↑ Γ = last (◇ ⊢ (↑ $ (sym new [])))
+rule (MTypingRule-TRule E ([]Tm T _)) ↑ Γ = last (◇ ⊢ (↑ $ (sym new [])) :> ((⊂Ext ↑) $ weaken^ T))
 rule (MTypingRule-TRule E (bt ∷ t)) ↑ Γ =
   next (λ {(◇ ⊢ a :> A) → do
     assume {!type bt == A!}
-    return (rule (MTypingRule-TRule E {!substitution a / s in t!}) {!↑!} Γ)})
+    return (rule (MTypingRule-TRule E {!substitution a / s in t!}) (↑ ∘ extend↑ {!↑!} {!!}) Γ)})
 -- rule (MTypingRule-TRule E []Ty) ↑ Γ [] = return (Γ ⊢ (sym (↑ $ new) []))
 -- rule (MTypingRule-TRule E ([]Tm type der)) ↑ Γ [] = return (Γ ⊢ sym (↑ $ new) [] :> ↑Expr ↑ (↑Expr ⊂Ext (weaken^ type)))
 -- rule (MTypingRule-TRule E (bt ∷ t)) ↑ Γ (Γ' ⊢ a :> T ∷ js) = do
