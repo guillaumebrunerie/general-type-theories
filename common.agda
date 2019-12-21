@@ -6,13 +6,6 @@ open import Agda.Builtin.List public
 open import Agda.Builtin.Bool public
 
 
-{- Rewriting -}
-
-postulate
-  _↦_ : ∀ {l} {A : Set l} → A → A → Set l
-{-# BUILTIN REWRITE _↦_ #-}
-
-
 {- Cartesian product -}
 
 record _×_ (A B : Set) : Set where
@@ -23,7 +16,7 @@ record _×_ (A B : Set) : Set where
 open _×_ public
 
 infixr 42 _×_
-infixr 4 _,_
+infixl 4 _,_
 
 
 {- Σ-types -}
@@ -42,11 +35,14 @@ record ΣS (A : Set) (B : A → Set) : Set where
     snd : B fst
 open ΣS public
 
+instance
+  pairP : {A : Prop} {B : A → Prop} {{a : A}} {{b : B a}} → ΣP A B
+  pairP {{a}} {{b}} = (a , b)
 
 {- True -}
 
 record ⊤ : Prop where
-  constructor tt
+  instance constructor tt
 
 
 {- False -}
@@ -54,11 +50,40 @@ record ⊤ : Prop where
 data ⊥ : Prop where
 
 
+{- Empty -}
+
+data Empty : Set where
+
+
+{- Unit -}
+
+record Unit : Set where
+  instance constructor tt
+
+
+{- Natural numbers -}
+
+record Number (A : Set) : Set₁ where
+  field
+    Constraint : ℕ → Set
+    fromNat : (n : ℕ) {{_ : Constraint n}} → A
+
+open Number {{...}} public
+
+{-# BUILTIN FROMNAT fromNat #-}
+
+instance
+  NumNat : Number ℕ
+  Number.Constraint NumNat _ = Unit
+  Number.fromNat NumNat n = n
+
+
 {- Equality -}
 
 data _≡_ {l} {A : Set l} (x : A) : A → Prop l where
   instance refl : x ≡ x
 {-# BUILTIN EQUALITY _≡_ #-}
+{-# BUILTIN REWRITE _≡_ #-}
 
 infix 4 _≡_
 
@@ -76,17 +101,11 @@ infixr 4 _∙_
 
 {- Lifting from Prop/Set to Set₁ -}
 
-record Box (P : Prop) : Set₁ where
-  constructor box
+record Box (P : Prop) : Set where
+  instance constructor box
   field
     unbox : P
 open Box public
-
-record Lift (A : Set) : Set₁ where
-  constructor lift
-  field
-    unlift : A
-open Lift public
 
 
 {- Finite sets -}
@@ -121,7 +140,7 @@ open Monad {{…}} public
 
 {- The partiality monad -}
 
-record Partial (A : Set₁) : Set₁ where
+record Partial (A : Set) : Set₁ where
   field
     isDefined : Prop
     _$_ : isDefined → A
@@ -139,17 +158,26 @@ assume : (P : Prop) → Partial (Box P)
 isDefined (assume P) = P
 unbox (assume P $ x) = x
 
-fail : {A : Set₁} → Partial A
+fail : {A : Set} → Partial A
 isDefined fail = ⊥
 
 
 {- Rewrite rules for the natural numbers (!) -}
 
-postulate
-  +S-rewrite : {n m : ℕ} → (m + suc n) ↦ (suc (m + n))
-  +O-rewrite : {n : ℕ} → (n + zero) ↦ n
-  {-# REWRITE +S-rewrite #-}
-  {-# REWRITE +O-rewrite #-}
++O-rewrite : {n : ℕ} → n + zero ≡ n
++O-rewrite {zero} = refl
++O-rewrite {suc n} = ap suc +O-rewrite
+{-# REWRITE +O-rewrite #-}
+
++S-rewrite : {n m : ℕ} → m + suc n ≡ suc (m + n)
++S-rewrite {m = zero} = refl
++S-rewrite {m = suc m} = ap suc +S-rewrite
+{-# REWRITE +S-rewrite #-}
+
+assoc : {n m k : ℕ} → n + (m + k) ≡ (n + m) + k
+assoc {n = zero} = refl
+assoc {n = suc n} {m} {k} = ap suc (assoc {n = n} {m} {k})
+{-# REWRITE assoc #-}
 
 
 {- Properties of the natural numbers -}
@@ -167,6 +195,11 @@ instance
   ≤+ : {n m : ℕ} → n ≤ (m + n)
   ≤+ {zero} {m} = ≤0
   ≤+ {suc n} {m} = ≤S ≤+
+
+-- instance
+--   ≤+2 : {n m : ℕ} → n ≤ (m + n)
+--   ≤+2 {zero} {m} = ≤0
+--   ≤+2 {suc n} {m} = ≤S ≤+
 
 instance
   ≤tr : {n m k : ℕ} {{_ : n ≤ m}} {{_ : m ≤ k}} → n ≤ k

@@ -12,7 +12,7 @@ represents arities.
 
 data ArityArgs (Sort : Set) : Set where
   [] : ArityArgs Sort
-  _∷_ : (ℕ × Sort) → ArityArgs Sort → ArityArgs Sort
+  _,_ : ArityArgs Sort → (ℕ × Sort) → ArityArgs Sort
 
 record Arity (Sort : Set) : Set where
   constructor mkarity
@@ -55,9 +55,10 @@ data Expr (Σ : Signature) (n : ℕ) : SyntaxSort → Set where
 
 data Args Σ n where
   [] : Args Σ n []
-  _∷_ : {m : ℕ} {k : SyntaxSort} {args : SyntaxArityArgs}
-      → Expr Σ (m + n) k → Args Σ n args
-      → Args Σ n ((m , k) ∷ args)
+  _,_ : {m : ℕ} {k : SyntaxSort} {args : SyntaxArityArgs}
+      → Args Σ n args
+      → Expr Σ (m + n) k
+      → Args Σ n (args , (m , k))
 
 {- Abbreviations for type-/term-expressions -}
 
@@ -67,7 +68,7 @@ TyExpr Σ n = Expr Σ n Ty
 TmExpr : (Σ : Signature) → ℕ → Set
 TmExpr Σ n = Expr Σ n Tm
 
-{- Weakening -}
+{- Weakening at a certain position -}
 
 weakenV : {n : ℕ} → VarPos n → WeakPos n → VarPos (suc n)
 weakenV x last = prev x
@@ -82,17 +83,31 @@ weaken (var x) k = var (weakenV x k)
 weaken (sym s args) k = sym s (weakenA args k)
 
 weakenA [] k = []
-weakenA (e ∷ args) k = weaken e (weakenWeakPos _ k) ∷ weakenA args k
+weakenA (args , e) k = weakenA args k , weaken e (weakenWeakPos _ k)
 
 weakenL : {Σ : Signature} {n : ℕ} {k : SyntaxSort} → Expr Σ n k → Expr Σ (suc n) k
 weakenL e = weaken e last
 
-weaken^ : {Σ : Signature} {k : _} {n : ℕ} → Expr Σ 0 k → Expr Σ n k
-weaken^ {n = zero} e = e
-weaken^ {n = suc n} e = weakenL (weaken^ e)
+{- Weakening at a group of positions -}
 
-postulate
-  weaken≤ : {Σ : Signature} {k : _} {n m : ℕ} {{_ : n ≤ m}} → Expr Σ n k → Expr Σ m k
+postulate  -- TODO
+  weaken^V : {n m l : ℕ} {{p : n ≤ m}} → VarPos (l + n) → VarPos (l + m)
+
+weaken^' : {Σ : Signature} {k : _} {n m l : ℕ} {{p : n ≤ m}} → Expr Σ (l + n) k → Expr Σ (l + m) k
+weaken^A' : {Σ : Signature} {ar : _} {n m l : ℕ} {{p : n ≤ m}} → Args Σ (l + n) ar → Args Σ (l + m) ar
+
+weaken^' (var k) = var (weaken^V k)
+weaken^' (sym s x) = sym s (weaken^A' x)
+
+weaken^A' [] = []
+weaken^A' {m = m} (a , x) = (weaken^A' a , weaken^' {m = m} x)
+
+weaken^ : {Σ : Signature} {k : _} {n m : ℕ} {{p : n ≤ m}} → Expr Σ n k → Expr Σ m k
+weaken^ = weaken^'
+
+weaken^A : {Σ : Signature} {ar : _} {n m : ℕ} {{p : n ≤ m}} → Args Σ n ar → Args Σ m ar
+weaken^A = weaken^A'
+
 
 {- Contexts, [Ctx Σ n] represents contexts in signature [Σ] and of length [n] -}
 
@@ -100,7 +115,8 @@ data Ctx (Σ : Signature) : ℕ → Set where
   ◇ : Ctx Σ 0
   _,_ : {n : ℕ} (Γ : Ctx Σ n) (A : TyExpr Σ n) → Ctx Σ (suc n)
 
-{-
+
+{- TODO
 Dependent contexts, [DepCtx Σ n m] represents contexts in signature [Σ], in scope [n], and of
 length [m]. They are built in the other direction compared to [Ctx], we add types to the left
 instead of adding them to the right. The reason is that the "purpose" of dependent contexts is to
@@ -109,19 +125,19 @@ move the types one by one to the context on the left.
 
 data DepCtx (Σ : Signature) (n : ℕ) : ℕ → Set where
   ◇ : DepCtx Σ n 0
-  _,_ : {m : ℕ} (A : TyExpr Σ n) → DepCtx Σ (suc n) m → DepCtx Σ n (suc m)
+  _,_ : {m : ℕ} → DepCtx Σ n m → TyExpr Σ (m + n) → DepCtx Σ n (suc m)
 
 {-
 Extraction of types from contexts.
 We need this partial version instead of the total well-typed one (below, not used).
 -}
 
-get : {Σ : Signature} {n : ℕ} (k : ℕ) → Ctx Σ n → Partial (Lift (VarPos n × TyExpr Σ n))
+get : {Σ : Signature} {n : ℕ} (k : ℕ) → Ctx Σ n → Partial (VarPos n × TyExpr Σ n)
 get k ◇ = fail
-get zero (Γ , A) = return (lift (last , weakenL A))
+get zero (Γ , A) = return (last , weakenL A)
 get (suc k) (Γ , X) = do
-  (lift (k' , A)) ← get k Γ
-  return (lift (prev k' , weakenL A))
+  (k' , A) ← get k Γ
+  return (prev k' , weakenL A)
 
 getTotal : {Σ : Signature} {n : ℕ} (k : VarPos n) → Ctx Σ n → TyExpr Σ n
 getTotal last (Γ , A) = weakenL A
