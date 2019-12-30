@@ -21,11 +21,6 @@ record Arity (Sort : Set) : Set where
     sort : Sort
 open Arity public
 
-{- This is the sorts that we use for the syntax, two sorts: types and terms -}
-
-data SyntaxSort : Set where
-  Ty : SyntaxSort
-  Tm : SyntaxSort
 
 SyntaxArityArgs = ArityArgs SyntaxSort
 SyntaxArity = Arity SyntaxSort

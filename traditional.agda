@@ -4,16 +4,19 @@ open import common
 
 {- Syntax of term- and type-expressions, using de Bruijn indices -}
 
-data TyExpr : ℕ → Set
-data TmExpr : ℕ → Set
+data Expr : SyntaxSort → ℕ → Set
 
-data TyExpr where
-  nat : {n : ℕ} → TyExpr n
+TyExpr = Expr Ty
+TmExpr = Expr Tm
 
-data TmExpr where
+data Expr where
+  uu : {n : ℕ} → TyExpr n
+  el : {n : ℕ} (v : TmExpr n) → TyExpr n
+  pi : {n : ℕ} (A : TyExpr n) (B : TyExpr (suc n)) → TyExpr n
+
   var : {n : ℕ} (x : VarPos n) → TmExpr n
-  zero : {n : ℕ} → TmExpr n
-  suc : {n : ℕ} (u : TmExpr n) → TmExpr n
+  lam : {n : ℕ} (A : TyExpr n) (B : TyExpr (suc n)) (u : TmExpr (suc n)) → TmExpr n
+  app : {n : ℕ} (A : TyExpr n) (B : TyExpr (suc n)) (f : TmExpr n) (a : TmExpr n) → TmExpr n
 
 data Ctx : ℕ → Set where
   ◇ : Ctx 0
@@ -28,7 +31,8 @@ data Judgment : Set where
   _⊢_==_:>_ : {n : ℕ} (Γ : Ctx n) → TmExpr n → TmExpr n → TyExpr n → Judgment
 
 postulate
-  weaken : {n : ℕ} → TyExpr n → TyExpr (suc n)
+  weaken : {n : ℕ} {k : SyntaxSort} → Expr k n → Expr k (suc n)
+  subst : {n : ℕ} {k : SyntaxSort} → Expr k (suc n) → TmExpr n → Expr k n
 
 get : {n : ℕ} → VarPos n → Ctx n → TyExpr n
 get last (Γ , A) = weaken A
@@ -65,20 +69,48 @@ data Derivable : Judgment → Prop where
   ConvEq : {n : ℕ} {Γ : Ctx n} {u u' : TmExpr n} {A B : TyExpr n} → Derivable (Γ ⊢ A)
     → Derivable (Γ ⊢ u == u' :> A) → Derivable (Γ ⊢ A == B) → Derivable (Γ ⊢ u == u' :> B)
 
-  -- Rules for Nat
-  Nat : {n : ℕ} {Γ : Ctx n}
-    → Derivable (Γ ⊢ nat)
-  NatCong : {n : ℕ} {Γ : Ctx n}
-    → Derivable (Γ ⊢ nat == nat)
 
-  -- Rules for zero
-  Zero : {n : ℕ} {Γ : Ctx n}
-    → Derivable (Γ ⊢ zero :> nat)
-  ZeroCong : {n : ℕ} {Γ : Ctx n}
-    → Derivable (Γ ⊢ zero == zero :> nat)
+  -- Rules for UU
+  UU : {n : ℕ} {Γ : Ctx n}
+    → Derivable (Γ ⊢ uu)
+  UUCong : {n : ℕ} {Γ : Ctx n}
+    → Derivable (Γ ⊢ uu == uu)
 
-  -- Rules for suc
-  Suc : {n : ℕ} {Γ : Ctx n} {u : TmExpr n}
-    → Derivable (Γ ⊢ u :> nat) → Derivable (Γ ⊢ suc u :> nat)
-  SucCong : {n : ℕ} {Γ : Ctx n} {u u' : TmExpr n}
-    → Derivable (Γ ⊢ u == u' :> nat) → Derivable (Γ ⊢ suc u == suc u' :> nat)
+  -- Rules for El
+  El : {n : ℕ} {Γ : Ctx n} {v : TmExpr n}
+    → Derivable (Γ ⊢ v :> uu) → Derivable (Γ ⊢ el v)
+  ElCong : {n : ℕ} {Γ : Ctx n} {v v' : TmExpr n}
+    → Derivable (Γ ⊢ v == v' :> uu) → Derivable (Γ ⊢ el v == el v')
+
+  -- Rules for Pi
+  Pi : {n : ℕ} {Γ : Ctx n} {A : TyExpr n} {B : TyExpr (suc n)}
+    → Derivable (Γ ⊢ A) → Derivable ((Γ , A) ⊢ B) → Derivable (Γ ⊢ pi A B)
+  PiCong : {n : ℕ} {Γ : Ctx n} {A A' : TyExpr n} {B B' : TyExpr (suc n)}
+    → Derivable (Γ ⊢ A)
+    → Derivable (Γ ⊢ A == A') → Derivable ((Γ , A) ⊢ B == B') → Derivable (Γ ⊢ pi A B == pi A' B')
+
+  -- Rules for lambda
+  Lam : {n : ℕ} {Γ : Ctx n} {A : TyExpr n} {B : TyExpr (suc n)} {u : TmExpr (suc n)}
+    → Derivable (Γ ⊢ A) → Derivable ((Γ , A) ⊢ B) → Derivable ((Γ , A) ⊢ u :> B)
+    → Derivable (Γ ⊢ lam A B u :> pi A B)
+  LamCong : {n : ℕ} {Γ : Ctx n} {A A' : TyExpr n} {B B' : TyExpr (suc n)} {u u' : TmExpr (suc n)}
+    → Derivable (Γ ⊢ A)
+    → Derivable (Γ ⊢ A == A') → Derivable ((Γ , A) ⊢ B == B') → Derivable ((Γ , A) ⊢ u == u' :> B)
+    → Derivable (Γ ⊢ lam A B u == lam A' B' u' :> pi A B)
+
+  -- Rules for app
+  App : {n : ℕ} {Γ : Ctx n} {A : TyExpr n} {B : TyExpr (suc n)} {f a : TmExpr n}
+    → Derivable (Γ ⊢ A) → Derivable ((Γ , A) ⊢ B) → Derivable (Γ ⊢ f :> pi A B) → Derivable (Γ ⊢ a :> A)
+    → Derivable (Γ ⊢ app A B f a :> subst B a)
+  AppCong : {n : ℕ} {Γ : Ctx n} {A A' : TyExpr n} {B B' : TyExpr (suc n)} {f f' a a' : TmExpr n}
+    → Derivable (Γ ⊢ A)
+    → Derivable (Γ ⊢ A == A') → Derivable ((Γ , A) ⊢ B == B') → Derivable (Γ ⊢ f == f' :> pi A B) → Derivable (Γ ⊢ a == a' :> A)
+    → Derivable (Γ ⊢ app A B f a == app A' B' f' a' :> subst B a)
+
+  -- Equality rules
+  BetaPi : {n : ℕ} {Γ : Ctx n} {A : TyExpr n} {B : TyExpr (suc n)} {u : TmExpr (suc n)} {a : TmExpr n}
+    → Derivable (Γ ⊢ A) → Derivable ((Γ , A) ⊢ B) → Derivable ((Γ , A) ⊢ u :> B) → Derivable (Γ ⊢ a :> A)
+    → Derivable (Γ ⊢ app A B (lam A B u) a == subst u a :> subst B a)
+  -- EtaPi : {n : ℕ} {Γ : Ctx n} {A : TyExpr n} {B : TyExpr (suc n)} {f : TmExpr n}
+  --   → Derivable (Γ ⊢ A) → Derivable ((Γ , A) ⊢ B) → Derivable (Γ ⊢ f :> pi A B)
+  --   → Derivable (Γ ⊢ f == lam A B (app (weaken A) {!weaken' (prev last) B!} (weaken f) (var last)) :> pi A B)

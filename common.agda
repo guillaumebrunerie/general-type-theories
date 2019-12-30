@@ -102,7 +102,7 @@ infixr 4 _∙_
 {- Lifting from Prop/Set to Set₁ -}
 
 record Box (P : Prop) : Set where
-  instance constructor box
+  constructor box
   field
     unbox : P
 open Box public
@@ -113,6 +113,15 @@ open Box public
 data VarPos : ℕ → Set where
   last : {n : ℕ} → VarPos (suc n)
   prev : {n : ℕ} → VarPos n → VarPos (suc n)
+
+-- Size of the context before (and including) that variable
+_-VarPos_ : (n : ℕ) → VarPos n → ℕ
+n -VarPos k = suc (n -VarPos' k) where
+
+  -- Size of the context before (and excluding) that variable
+  _-VarPos'_ : (n : ℕ) → VarPos n → ℕ
+  (suc m) -VarPos' last = m
+  (suc m) -VarPos' prev k = m -VarPos' k
 
 data WeakPos : ℕ → Set where
   last : {n : ℕ} → WeakPos n
@@ -191,17 +200,10 @@ instance
   ≤r {zero} = ≤0
   ≤r {suc n} = ≤S ≤r
 
-instance
   ≤+ : {n m : ℕ} → n ≤ (m + n)
   ≤+ {zero} {m} = ≤0
   ≤+ {suc n} {m} = ≤S ≤+
 
--- instance
---   ≤+2 : {n m : ℕ} → n ≤ (m + n)
---   ≤+2 {zero} {m} = ≤0
---   ≤+2 {suc n} {m} = ≤S ≤+
-
-instance
   ≤tr : {n m k : ℕ} {{_ : n ≤ m}} {{_ : m ≤ k}} → n ≤ k
   ≤tr ⦃ ≤0 ⦄ ⦃ q ⦄ = ≤0
   ≤tr ⦃ ≤S p ⦄ ⦃ ≤S q ⦄ = ≤S (≤tr ⦃ p ⦄ ⦃ q ⦄)
@@ -211,3 +213,20 @@ instance
 
 ⟨⟩ : {A : Prop} {{a : A}} → A
 ⟨⟩ {{a}} = a
+
+
+{- This is the sorts that we use for the syntax, two sorts: types and terms -}
+
+data SyntaxSort : Set where
+  Ty : SyntaxSort
+  Tm : SyntaxSort
+
+
+ap2 : {A B C : Set} (f : A → B → C) {a a' : A} {b b' : B} → a ≡ a' → b ≡ b' → f a b ≡ f a' b'
+ap2 f refl refl = refl
+
+ap3 : {A B C D : Set} (f : A → B → C → D) {a a' : A} {b b' : B} {c c' : C} → a ≡ a' → b ≡ b' → c ≡ c' → f a b c ≡ f a' b' c'
+ap3 f refl refl refl = refl
+
+ap4 : {A B C D E : Set} (f : A → B → C → D → E) {a a' : A} {b b' : B} {c c' : C} {d d' : D} → a ≡ a' → b ≡ b' → c ≡ c' → d ≡ d' → f a b c d ≡ f a' b' c' d'
+ap4 f refl refl refl refl = refl
