@@ -28,11 +28,15 @@ infixr 42 _×_
 infixl 4 _,_
 
 record ΣP (A : Prop) (B : A → Prop) : Prop where
-  instance constructor σP
+  constructor _,_
   field
-    {{fst}} : A
-    {{snd}} : B fst
+    fst : A
+    snd : B fst
 open ΣP public
+
+instance
+  pairP : {A : Prop} {B : A → Prop} {{a : A}} {{b : B a}} → ΣP A B
+  pairP {{a}} {{b}} = a , b
 
 record ΣS (A : Set) (B : A → Set) : Set where
   constructor _,_
@@ -191,3 +195,30 @@ instance
 data SyntaxSort : Set where
   Ty : SyntaxSort
   Tm : SyntaxSort
+
+
+{- Positions of variables in a context -}
+
+data VarPos : ℕ → Set where
+  last : {n : ℕ} → VarPos (suc n)
+  prev : {n : ℕ} → VarPos n → VarPos (suc n)
+
+-- Size of the context before (and including) that variable
+_-VarPos_ : (n : ℕ) → VarPos n → ℕ
+n -VarPos k = suc (n -VarPos' k) where
+
+  -- Size of the context before (and excluding) that variable
+  _-VarPos'_ : (n : ℕ) → VarPos n → ℕ
+  (suc m) -VarPos' last = m
+  (suc m) -VarPos' prev k = m -VarPos' k
+
+
+{- Positions of weakening spots in a context -}
+
+data WeakPos : ℕ → Set where
+  last : {n : ℕ} → WeakPos n
+  prev : {n : ℕ} → WeakPos n → WeakPos (suc n)
+
+weakenWeakPos : {n : ℕ} (m : ℕ) → WeakPos n → WeakPos (m + n)
+weakenWeakPos zero k = k
+weakenWeakPos (suc m) k = prev (weakenWeakPos m k)

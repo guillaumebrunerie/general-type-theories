@@ -4,11 +4,15 @@ open import common
 
 open import syntx as N
 open import derivability as N
+open import typingrules
+open import structuralrules
+open import typetheories
+open import examples
 
 open import traditional as T
 
 Σ : Signature
-Σ = N.TTSig ΠUEl-TT
+Σ = TTSig ΠUEl-TT
 
 
 {- Maps between expressions -}
@@ -72,13 +76,13 @@ T→NJ (Γ ⊢ u == v :> A) = njudgment (T→NCtx Γ) (◇ ⊢ T→N u == T→N 
 T→NDer : {j : T.Judgment} → T.Derivable j → NDerivable (T→NJ j)
 T→NDer (Var k d) = apr {!str (var ?)!} {!!}
 T→NDer (TyRefl dA) = apr (str tyRefl) ([] , T→NDer dA)
-T→NDer (TySymm dA=) = apr (str tySymm) ([] , {!T→NDer dA=!} , {!!} , {!!})
-T→NDer (TyTran dA= dB dB=) = {!!}
+T→NDer (TySymm dA=) = apr (str tySymm) ([] , T→NDer dA=)
+T→NDer (TyTran dB dA= dB=) = apr (str tyTran) ([] , T→NDer dA= , T→NDer dB=)
 T→NDer (TmRefl du) = apr (str tmRefl) ([] , T→NDer du)
 T→NDer (TmSymm du=) = apr (str tmSymm) ([] , T→NDer du=)
 T→NDer (TmTran dv du= dv=) = apr (str tmTran) ([] , T→NDer du= , T→NDer dv=)
-T→NDer (Conv d d₁ d₂) = {!!}
-T→NDer (ConvEq d d₁ d₂) = {!!}
+T→NDer (Conv dA du dA=) = apr (str conv) ([] , T→NDer du , T→NDer dA=)
+T→NDer (ConvEq dA du= dA=) = apr (str convEq) ([] , T→NDer du= , T→NDer dA=)
 T→NDer UU = apr 1 []
 T→NDer UUCong = {!!}
 T→NDer (El dv) = apr 0 ([] , T→NDer dv)
@@ -103,21 +107,22 @@ N→TJ (njudgment Γ (◇ ⊢ A == B)) = N→TCtx Γ ⊢ N→T A == N→T B
 N→TJ (njudgment Γ (◇ ⊢ u == v :> A)) = N→TCtx Γ ⊢ N→T u == N→T v :> N→T A
 
 N→TDer : {j : NJudgment} → NDerivable j → T.Derivable (N→TJ j)
-N→TDer {njudgment Γ _} (apr r js-der) = {!r!}
-
--- gDer : {j : NJudgment} → NDerivable j → T.Derivable (gJ j)
--- gDer {njudgment Γ _} (apr typingrule {js = [] , (◇ ⊢ u :> .(sym (prev (prev new)) []))} ([] , du) {{tt , (refl , tt) , tt}}) = Suc (gDer du)
--- gDer {njudgment Γ _} (apr congruencerule {js = [] , (◇ ⊢ u == v :> .(sym (prev (prev new)) []))} ([] , du=) {{tt , (refl , (refl , tt)) , tt}}) = SucCong (gDer du=)
--- gDer {njudgment Γ _} (apr (prev typingrule) {js = []} []) = Zero
--- gDer {njudgment Γ _} (apr (prev congruencerule) {js = []} []) = ZeroCong
--- gDer {njudgment Γ _} (apr (prev (prev typingrule)) {js = []} []) = Nat
--- gDer {njudgment Γ _} (apr (prev (prev congruencerule)) {js = []} []) = NatCong
--- gDer {njudgment Γ _} (apr (prev (prev (prev (var k)))) {js = [] , (◇ ⊢ .(snd (N.get k Γ $ _)))} ([] , dA) {{getIsDef , (refl , tt)}}) = {!Var (fst (N.get k Γ $ getIsDef)) {!gDer dA!}!}
--- gDer {njudgment Γ _} (apr (prev (prev (prev conv))) {js = ([] , (◇ ⊢ u :> A)) , (◇ ⊢ .A == B)} ([] , du , dA=) {{refl , tt}}) = Conv {!!} (gDer du) (gDer dA=)
--- gDer {njudgment Γ _} (apr (prev (prev (prev convEq))) js-der) = {!!}
--- gDer {njudgment Γ _} (apr (prev (prev (prev tyRefl))) {js = [] , (◇ ⊢ A)} ([] , dA)) = TyRefl (gDer dA)
--- gDer {njudgment Γ _} (apr (prev (prev (prev tySymm))) js-der) = {!!}
--- gDer {njudgment Γ _} (apr (prev (prev (prev tyTran))) js-der) = {!!}
--- gDer {njudgment Γ _} (apr (prev (prev (prev tmRefl))) js-der) = {!!}
--- gDer {njudgment Γ _} (apr (prev (prev (prev tmSymm))) {js = [] , (◇ ⊢ u == v :> A)} ([] , du=)) = TmSymm (gDer du=)
--- gDer {njudgment Γ _} (apr (prev (prev (prev tmTran))) js-der) = {!!}
+N→TDer {njudgment Γ _} (apr typingrule {js = [] , (◇ ⊢ v :> _)} ([] , dv) {{ (tt , (tt , (refl , tt))) , tt }}) = El (N→TDer dv)
+N→TDer {njudgment Γ _} (apr congruencerule {js = [] , ◇ ⊢ v == v' :> _} ([] , dv=) {{x}}) = {!TODO!}
+N→TDer {njudgment Γ _} (apr (prev typingrule) []) = UU
+N→TDer {njudgment Γ _} (apr (prev congruencerule) {js = []} [] {{def}}) = {!def!}
+N→TDer {njudgment Γ _} (apr (prev (prev typingrule)) js-der) = {!!}
+N→TDer {njudgment Γ _} (apr (prev (prev congruencerule)) js-der) = {!!}
+N→TDer {njudgment Γ _} (apr (prev (prev (prev typingrule))) js-der) = {!!}
+N→TDer {njudgment Γ _} (apr (prev (prev (prev congruencerule))) js-der) = {!!}
+N→TDer {njudgment Γ _} (apr (prev (prev (prev (prev typingrule)))) js-der) = {!!}
+N→TDer {njudgment Γ _} (apr (prev (prev (prev (prev congruencerule)))) js-der) = {!!}
+N→TDer {njudgment Γ _} (apr (prev (prev (prev (prev (prev (var k)))))) js-der) = {!r!}
+N→TDer {njudgment Γ _} (apr (prev (prev (prev (prev (prev conv))))) js-der) = {!r!}
+N→TDer {njudgment Γ _} (apr (prev (prev (prev (prev (prev convEq))))) js-der) = {!r!}
+N→TDer {njudgment Γ _} (apr (prev (prev (prev (prev (prev tyRefl))))) {js = [] , ◇ ⊢ A} ([] , dA)) = TyRefl (N→TDer dA)
+N→TDer {njudgment Γ _} (apr (prev (prev (prev (prev (prev tySymm))))) {js = [] , ◇ ⊢ A == B} ([] , dA=)) = TySymm (N→TDer dA=)
+N→TDer {njudgment Γ _} (apr (prev (prev (prev (prev (prev tyTran))))) {js = [] , ◇ ⊢ A == B , ◇ ⊢ B == C} ([] , dA= , dB=) {{refl , tt}}) = TyTran {!def!} (N→TDer dA=) (N→TDer dB=)
+N→TDer {njudgment Γ _} (apr (prev (prev (prev (prev (prev tmRefl))))) {js = [] , ◇ ⊢ u :> A} ([] , du)) = TmRefl (N→TDer du)
+N→TDer {njudgment Γ _} (apr (prev (prev (prev (prev (prev tmSymm))))) {js = [] , ◇ ⊢ u == v :> A} ([] , du=)) = TmSymm (N→TDer du=)
+N→TDer {njudgment Γ _} (apr (prev (prev (prev (prev (prev tmTran))))) {js = [] , ◇ ⊢ u == v :> A , ◇ ⊢ v == w :> A} ([] , du= , dv=) {{refl , (refl , tt)}}) = TmTran {!def!} (N→TDer du=) (N→TDer dv=)
