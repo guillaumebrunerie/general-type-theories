@@ -108,9 +108,9 @@ N→TJ (njudgment Γ (◇ ⊢ u == v :> A)) = N→TCtx Γ ⊢ N→T u == N→T v
 
 N→TDer : {j : NJudgment} → NDerivable j → T.Derivable (N→TJ j)
 N→TDer {njudgment Γ _} (apr typingrule {js = [] , (◇ ⊢ v :> _)} ([] , dv) {{ (tt , (tt , (refl , tt))) , tt }}) = El (N→TDer dv)
-N→TDer {njudgment Γ _} (apr congruencerule {js = [] , ◇ ⊢ v == v' :> _} ([] , dv=) {{x}}) = {!TODO!}
+N→TDer {njudgment Γ _} (apr congruencerule {js = [] , ◇ ⊢ v == v' :> _} ([] , dv=) {{((tt , (tt , (tt , (refl , tt)))) , tt)}}) = ElCong (N→TDer dv=)
 N→TDer {njudgment Γ _} (apr (prev typingrule) []) = UU
-N→TDer {njudgment Γ _} (apr (prev congruencerule) {js = []} [] {{def}}) = {!def!}
+N→TDer {njudgment Γ _} (apr (prev congruencerule) []) = UUCong
 N→TDer {njudgment Γ _} (apr (prev (prev typingrule)) js-der) = {!!}
 N→TDer {njudgment Γ _} (apr (prev (prev congruencerule)) js-der) = {!!}
 N→TDer {njudgment Γ _} (apr (prev (prev (prev typingrule))) js-der) = {!!}
