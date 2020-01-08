@@ -70,19 +70,19 @@ T→NJ (Γ ⊢ u == v :> A) = njudgment (T→NCtx Γ) (◇ ⊢ T→N u == T→N 
 
 
 T→NDer : {j : T.Judgment} → T.Derivable j → NDerivable (T→NJ j)
-T→NDer (Var k d) = {!!}
-T→NDer (TyRefl dA) = apr (prev (prev (prev (prev (prev tyRefl))))) ([] , T→NDer dA)
-T→NDer (TySymm dA=) = {!!}
+T→NDer (Var k d) = apr {!str (var ?)!} {!!}
+T→NDer (TyRefl dA) = apr (str tyRefl) ([] , T→NDer dA)
+T→NDer (TySymm dA=) = apr (str tySymm) ([] , {!T→NDer dA=!} , {!!} , {!!})
 T→NDer (TyTran dA= dB dB=) = {!!}
-T→NDer (TmRefl du) = {!!}
-T→NDer (TmSymm du=) = {!!}
-T→NDer (TmTran du= dv dv=) = {!!}
+T→NDer (TmRefl du) = apr (str tmRefl) ([] , T→NDer du)
+T→NDer (TmSymm du=) = apr (str tmSymm) ([] , T→NDer du=)
+T→NDer (TmTran dv du= dv=) = apr (str tmTran) ([] , T→NDer du= , T→NDer dv=)
 T→NDer (Conv d d₁ d₂) = {!!}
 T→NDer (ConvEq d d₁ d₂) = {!!}
-T→NDer UU = apr {!1!} {!!}
+T→NDer UU = apr 1 []
 T→NDer UUCong = {!!}
-T→NDer (El d) = {!apr 0 ?!}
-T→NDer (ElCong d) = {!!}
+T→NDer (El dv) = apr 0 ([] , T→NDer dv)
+T→NDer (ElCong dv) = {!!}
 T→NDer (Pi dA dB) = apr 4 ([] , T→NDer dA , flat {!T→NDer dB!})
 T→NDer (PiCong d d₁ d₂) = {!!}
 T→NDer (Lam d d₁ d₂) = apr 3 {!!}

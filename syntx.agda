@@ -2,6 +2,33 @@
 
 open import common
 
+{- Positions of variables in a context -}
+
+data VarPos : ℕ → Set where
+  last : {n : ℕ} → VarPos (suc n)
+  prev : {n : ℕ} → VarPos n → VarPos (suc n)
+
+-- Size of the context before (and including) that variable
+_-VarPos_ : (n : ℕ) → VarPos n → ℕ
+n -VarPos k = suc (n -VarPos' k) where
+
+  -- Size of the context before (and excluding) that variable
+  _-VarPos'_ : (n : ℕ) → VarPos n → ℕ
+  (suc m) -VarPos' last = m
+  (suc m) -VarPos' prev k = m -VarPos' k
+
+
+{- Positions of weakening spots in a context -}
+
+data WeakPos : ℕ → Set where
+  last : {n : ℕ} → WeakPos n
+  prev : {n : ℕ} → WeakPos n → WeakPos (suc n)
+
+weakenWeakPos : {n : ℕ} (m : ℕ) → WeakPos n → WeakPos (m + n)
+weakenWeakPos zero k = k
+weakenWeakPos (suc m) k = prev (weakenWeakPos m k)
+
+
 {-
 An *arity* is something of the form (((n_1, k_1), …, (n_l, k_l)) , k), where the n_i are natural
 numbers and the k_i and k are sorts. We will use two different types of sorts, so we parametrize

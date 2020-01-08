@@ -572,7 +572,7 @@ rule (TypingRule-TRule E (Tm ts t) {m = m}) ↑ Γ js = do
   as ← TypingRule-TArgs E (⊂Ext ↑) ts js
   return (◇ ⊢ (↑ $ new) as :> ↑Expr (SubstM (⊂Ext (liftSub ↑)) (weaken^A as)) (↑Expr (SubstBM id⊂ (Vars m)) (weaken^ (type t))))
 
-postulate
+postulate  -- TODO
   TypingRule-CRule : {Σ : Signature} (E : DerivabilityStructure Σ) {args : SyntaxArityArgs} {k : SyntaxSort}
                      (t : TypingRule E args k) {m : ℕ}
                      → DerivationRule (ExtSig Σ (mkarity args k)) (CArity (mkarity args k)) m
@@ -591,6 +591,7 @@ Symbols Σ₀ ar = Empty
 
 E₀ : DerivabilityStructure Σ₀
 E₀ = StructuralRules Σ₀
+
 
 data TypeTheory : Set
 TTSig : TypeTheory → Signature
@@ -635,88 +636,98 @@ instance
   Number.fromNat (NumExt {{r}}) (suc n) = prev (Number.fromNat r n)
 
 
+record HasStructuralRules (Σ : Signature) (A : JudgmentArity → Set) : Set where
+  field
+    str : {ar : JudgmentArity} → StructuralRulesType Σ {ar = ar} → A ar
+open HasStructuralRules {{...}} public
+
+instance
+  HasStructuralRules-id : {Σ : Signature} → HasStructuralRules Σ (λ ar → StructuralRulesType Σ {ar})
+  HasStructuralRules.str HasStructuralRules-id x = x
+
+  HasStructuralRules-Ext : {Σ : Signature} {A : JudgmentArity → Set} {ar : SyntaxArity}
+                           {{_ : HasStructuralRules Σ A}} → HasStructuralRules Σ (Ext A ar)
+  HasStructuralRules.str HasStructuralRules-Ext x = prev (str x)
+
 {- Examples -}
 
 {- Π-Types -}
 
 module _ where
-  TypingRuleΠ : TypingRule E₀ ([] , (0 , Ty) , (1 , Ty)) Ty
+  TypingRuleΠ : TypingRule (TTDer ◇) ([] , (0 , Ty) , (1 , Ty)) Ty
   TypingRuleΠ = Ty ([] , Ty [] , Ty ([] , bmtypingrule (sym 0 []) (apr 0 [])))
 
-  TypingRuleλ : TypingRule (extend _ (TRules TypingRuleΠ)) ([] , (0 , Ty) , (1 , Ty) , (1 , Tm)) Tm
+  ΠUEl-TT1 : TypeTheory
+  ΠUEl-TT1 = ◇ , TypingRuleΠ
+
+  TypingRuleλ : TypingRule (TTDer ΠUEl-TT1) ([] , (0 , Ty) , (1 , Ty) , (1 , Tm)) Tm
   TypingRuleλ = Tm ([] , Ty []
                        , Ty ([] , bmtypingrule (sym 0 []) (apr 0 []))
                        , Tm ([] , bmtypingrule (sym 1 []) (apr 1 []))
                             (bmtypingrule (sym 1 ([] , sym 0 []))
                                           (apr 1 (_,_ {j = ◇ ⊢ _ :> _} [] (apr 0 [])))))
                    (bmtypingrule (sym 3 ([] , sym 2 [] , sym 1 ([] , var last)))
-                                 (apr 3 ([] , apr 2 [] , flat {j = (◇ , _) ⊢ _} (apr 1 ([] , apr (prev (prev (prev (prev (var 0))))) ([] , apr 2 []))))))
+                                 (apr 3 ([] , apr 2 [] , flat {j = (◇ , _) ⊢ _} (apr 1 ([] , apr (str (var 0)) ([] , apr 2 []))))))
 
-  TypingRuleapp : TypingRule (extend _ (TRules TypingRuleλ)) ([] , (0 , Ty) , (1 , Ty) , (0 , Tm) , (0 , Tm)) Tm
+  ΠUEl-TT2 : TypeTheory
+  ΠUEl-TT2 = ΠUEl-TT1 , TypingRuleλ
+
+  TypingRuleapp : TypingRule (TTDer ΠUEl-TT2) ([] , (0 , Ty) , (1 , Ty) , (0 , Tm) , (0 , Tm)) Tm
   TypingRuleapp = Tm ([] , Ty []
                          , Ty ([] , (bmtypingrule (sym 0 []) (apr 0 [])))
                          , Tm [] (bmtypingrule (sym 3 ([] , sym 1 [] , sym 0 ([] , var last)))
-                                               (apr 3 ([] , apr 1 [] , flat {j = (◇ , _) ⊢ _} (apr 0 ([] , apr (prev (prev (prev (prev (var 0))))) ([] , apr 1 []))))))
+                                               (apr 3 ([] , apr 1 [] , flat {j = (◇ , _) ⊢ _} (apr 0 ([] , apr (str (var 0)) ([] , apr 1 []))))))
                          , Tm [] (bmtypingrule (sym 2 []) (apr 2 [])))
                      (bmtypingrule (sym 2 ([] , sym 0 []))
                                    (apr 2 ([] , apr 0 [])))
 
-  TypingRuleU : TypingRule (extend _ (TRules TypingRuleapp)) [] Ty
+  ΠUEl-TT3 : TypeTheory
+  ΠUEl-TT3 = ΠUEl-TT2 , TypingRuleapp
+
+  TypingRuleU : TypingRule (TTDer ΠUEl-TT3) [] Ty
   TypingRuleU = Ty []
 
-  TypingRuleEl : TypingRule (extend _ (TRules TypingRuleU)) ([] , (0 , Tm)) Ty
+  ΠUEl-TT4 : TypeTheory
+  ΠUEl-TT4 = ΠUEl-TT3 , TypingRuleU
+  
+  TypingRuleEl : TypingRule (TTDer ΠUEl-TT4) ([] , (0 , Tm)) Ty
   TypingRuleEl = Ty ([] , Tm [] (bmtypingrule (sym 0 []) (apr 0 [])))
 
   ΠUEl-TT : TypeTheory
-  ΠUEl-TT = ◇ , TypingRuleΠ , TypingRuleλ , TypingRuleapp , TypingRuleU , TypingRuleEl
+  ΠUEl-TT = ΠUEl-TT4 , TypingRuleEl
 
 
--- {- Formation rule, introduction rule, and elimination rule for the natural numbers -}
+{- Formation rule, introduction rule, and elimination rule for the natural numbers -}
 
--- module _ where
---   TypingRuleℕ : MTypingRule E₀ 0 Ty
---   TypingRuleℕ = Ty []
+module _ where
+  TypingRuleℕ : TypingRule (TTDer ◇) [] Ty
+  TypingRuleℕ = Ty []
 
---   E₁ : DerivabilityStructure _
---   E₁ = extend E₀ (MRules TypingRuleℕ)
+  ℕ-TT0 : TypeTheory
+  ℕ-TT0 = ◇ , TypingRuleℕ
 
---   TypingRule0 : MTypingRule E₁ 0 Tm
---   TypingRule0 = Tm [] (bmtypingrule (sym 0 []) (apr 0 []))
+  TypingRule0 : TypingRule (TTDer ℕ-TT0) [] Tm
+  TypingRule0 = Tm [] (bmtypingrule (sym 0 []) (apr 0 []))
 
---   E₂ : DerivabilityStructure _
---   E₂ = extend E₁ (MRules TypingRule0)
+  ℕ-TT1 : TypeTheory
+  ℕ-TT1 = ℕ-TT0 , TypingRule0
 
---   TypingRuleS : MTypingRule E₂ 1 Tm
---   TypingRuleS = Tm ([] , bmtypingrule (sym 1 []) (apr 1 []))
---                         (bmtypingrule (sym 2 []) (apr 2 []))
+  TypingRuleS : TypingRule (TTDer ℕ-TT1) ([] , (0 , Tm)) Tm
+  TypingRuleS = Tm ([] , Tm [] (bmtypingrule (sym 1 []) (apr 1 [])))
+                   (bmtypingrule (sym 2 []) (apr 2 []))
 
---   E₃ : DerivabilityStructure _
---   E₃ = extend E₂ (MRules TypingRuleS)
+  ℕ-TT2 : TypeTheory
+  ℕ-TT2 = ℕ-TT1 , TypingRuleS
 
---   TypingRuleP : MTypingRule E₃ 1 Ty
---   TypingRuleP = Ty ([] , bmtypingrule (sym 2 []) (apr 2 []))
+  TypingRuleℕ-elim : TypingRule (TTDer ℕ-TT2) ([] , (1 , Ty) , (0 , Tm) , (2 , Tm) , (0 , Tm)) Tm
+  TypingRuleℕ-elim = Tm ([] , Ty ([] , bmtypingrule (sym 2 []) (apr 2 []))
+                            , Tm [] (bmtypingrule (sym 3 []) (apr 3 []))
+                            , Tm ([] , bmtypingrule (sym 4 []) (apr 4 [])
+                                     , bmtypingrule (sym 2 ([] , sym 0 [])) (apr 2 ([] , apr 0 [])))
+                                 (bmtypingrule (sym 3 ([] , (sym 4 ([] , (sym 1 [])))))
+                                               (apr 3 ([] , apr 4 ([] , apr 1 []))))
+                            , Tm [] (bmtypingrule (sym 5 []) (apr 5 [])))
+                        (bmtypingrule (sym 3 ([] , (sym 0 []))) (apr 3 ([] , apr 0 [])))
 
---   E₄ : DerivabilityStructure _
---   E₄ = extend _ (MRules TypingRuleP)
-
---   TypingRuled0 : MTypingRule E₄ 0 Tm
---   TypingRuled0 = Tm [] (bmtypingrule (sym 3 []) (apr 3 []))
-
---   E₅ : DerivabilityStructure _
---   E₅ = extend _ (MRules TypingRuled0)
-
---   TypingRuledS : MTypingRule E₅ 2 Tm
---   TypingRuledS = Tm ([] , bmtypingrule (sym 4 []) (apr 4 [])
---                         , bmtypingrule (sym 2 ([] , sym 0 [])) (apr 2 ([] , apr 0 [])))
---                     (bmtypingrule (sym 3 ([] , (sym 4 ([] , (sym 1 [])))))
---                                   (apr 3 ([] , apr 4 ([] , apr 1 []))))
-
---   E₆ : DerivabilityStructure _
---   E₆ = extend E₅ (MRules TypingRuledS)
-
---   TypingRulen : MTypingRule E₆ 0 Tm
---   TypingRulen = Tm [] (bmtypingrule (sym 5 []) (apr 5 []))
-
---   TypingRuleℕ-elim : TypingRule E₃ ([] , (1 , Ty) , (0 , Tm) , (2 , Tm) , (0 , Tm)) Tm
---   TypingRuleℕ-elim = Tm ([] , TypingRuleP , TypingRuled0 , TypingRuledS , TypingRulen)
---                         (bmtypingrule (sym 3 ([] , (sym 0 []))) (apr 3 ([] , apr 0 [])))
+  ℕ-TT : TypeTheory
+  ℕ-TT = ℕ-TT2 , TypingRuleℕ-elim
