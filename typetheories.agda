@@ -23,15 +23,16 @@ TTDer : (t : TypeTheory) → DerivabilityStructure (TTSig t)
 data TypeTheory where
   ◇ : TypeTheory
   _,_ : (t : TypeTheory) {ar : SyntaxArity} (r : TypingRule (TTDer t) (args ar) (sort ar)) → TypeTheory
---  _,=_ : (t : TypeTheory) → {!!} → TypeTheory
+  _,=_ : (t : TypeTheory) {ar : SyntaxArityArgs} {k : JudgmentSort} (r : EqualityRule (TTDer t) ar k) → TypeTheory
 
 TTSig ◇ = Σ₀
 TTSig (_,_ t {ar} r) = ExtSig (TTSig t) ar
---TTSig (t ,= _) = TTSig t
+TTSig (t ,= _) = TTSig t
 
 TTDer ◇ = E₀
 TTDer (t , r) = extend (TTDer t) (TRules r)
---TTDer (t ,= r) = {!!}
+TTDer (t ,= r) = extend0 (TTDer t) (ERule _ r)
+
 
 {- Instances to make it possible to use numeric literals to refer to symbols and typing rules -}
 
@@ -56,6 +57,12 @@ instance
   Number.Constraint (NumExt {{r}}) (suc n) = Number.Constraint r n
   Number.fromNat NumExt zero {{refl}} = typingrule
   Number.fromNat (NumExt {{r}}) (suc n) = prev (Number.fromNat r n)
+
+  NumExt0 : {A : JudgmentArity → Set} {nar ar' : JudgmentArity} {{_ : Number (A ar')}} → Number (Ext0 A nar ar')
+  Number.Constraint (NumExt0 {nar = nar} {ar'}) zero = nar === ar'
+  Number.Constraint (NumExt0 {{r}}) (suc n) = Number.Constraint r n
+  Number.fromNat NumExt0 zero {{refl}} = equalityrule
+  Number.fromNat (NumExt0 {{r}}) (suc n) = prev (Number.fromNat r n)
 
 
 record HasStructuralRules (Σ : Signature) (A : JudgmentArity → Set) : Set where

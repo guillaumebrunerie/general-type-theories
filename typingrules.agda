@@ -184,7 +184,10 @@ congruencedrule (MRules t) = MTypingRule-CRule _ t
 
 
 
-{- comment TODO -}
+{-
+General typing rules are very similar to typing rules of metavariables, except that they are using
+[MTypingRule] instead of [BMTypingRule] for the premises.
+-}
 
 data TypingRulePremises : {Σ : Signature} (E : DerivabilityStructure Σ) (args : SyntaxArityArgs) → Set
 
@@ -200,8 +203,6 @@ data TypingRulePremises where
 extend^M E [] = E
 extend^M E (ts , t) = extend (extend^M E ts) (MRules t)
 
-{- comment TODO -}
-
 data TypingRule {Σ : Signature} (E : DerivabilityStructure Σ) (args : SyntaxArityArgs) : (k : SyntaxSort) → Set where
   Ty : TypingRulePremises E args → TypingRule E args Ty
   Tm : (ts : TypingRulePremises E args) → BMTypingRule (extend^M E ts) → TypingRule E args Tm
@@ -209,11 +210,15 @@ data TypingRule {Σ : Signature} (E : DerivabilityStructure Σ) (args : SyntaxAr
 
 {- The derivation rules associated to a typing rule. -}
 
+{- List of all the last [n] variables in scope [m] -}
 Vars : {Σ : Signature} {n : ℕ} (m : ℕ) → Args Σ (n + m) (MArityArgs n)
 Vars {n = zero} m = []
 Vars {n = suc n} m = weaken^A (Vars m) , var last
 
-
+{-
+[check-DepCtx ↑ as ts Δ] checks that the premises [ts] correspond to the dependent context [Δ],
+where [as] corresponds to the interpretations of the metavariables.
+-}
 check-DepCtx : {Σ Σ' : Signature} {m n : ℕ} {args : SyntaxArityArgs}
                {E : DerivabilityStructure (ExtSig^ Σ args)}
                → (Σ →Sig Σ') m → Args Σ' m args
@@ -283,3 +288,46 @@ TRules : {Σ : Signature} {E : DerivabilityStructure Σ} {ar : SyntaxArity}
         → DerivationRules E ar m
 typingdrule (TRules t) = TypingRule-TRule _ t
 congruencedrule (TRules t) = TypingRule-CRule _ t
+
+
+
+{- Equality rules -}
+
+{-
+[extend0 E tc] extends the derivability structure with one single (equality) rule
+-}
+data Ext0 (A : JudgmentArity → Set) (nar : JudgmentArity) : JudgmentArity → Set where
+  equalityrule : Ext0 A nar nar
+  prev : {jar : JudgmentArity} → A jar → Ext0 A nar jar
+
+extend0 : {Σ : Signature} (E : DerivabilityStructure Σ)
+          {ar : JudgmentArity}
+          (tc : {n : ℕ} → DerivationRule Σ ar n)
+          → DerivabilityStructure Σ
+Rules (extend0 E {ar} tc) = Ext0 (Rules E) ar
+derivationRule (extend0 E tc) (prev r) = derivationRule E r
+derivationRule (extend0 E tc) equalityrule = tc
+
+record TermEquality {Σ : Signature} (E : DerivabilityStructure Σ) : Set where
+  constructor _<:_/_//_/_
+  field
+    type : TyExpr Σ 0
+    term1 : TmExpr Σ 0
+    der1 : Derivable E {Γ = ◇} (◇ ⊢ term1 :> type)
+    term2 : TmExpr Σ 0
+    der2 : Derivable E {Γ = ◇} (◇ ⊢ term2 :> type)
+open BMTypingRule public
+
+data EqualityRule {Σ : Signature} (E : DerivabilityStructure Σ) (args : SyntaxArityArgs) : (k : JudgmentSort) → Set where
+  Ty= : (ts : TypingRulePremises E args) (A B : BMTypingRule (extend^M E ts)) → EqualityRule E args Ty=
+  Tm= : (ts : TypingRulePremises E args) (A : TermEquality (extend^M E ts)) → EqualityRule E args Tm=
+
+ERule : {Σ : Signature} (E : DerivabilityStructure Σ) {args : SyntaxArityArgs} {k : JudgmentSort} {n : ℕ}
+        → EqualityRule E args k
+        → DerivationRule Σ (TArityArgs args , k) n
+rule (ERule E (Ty= ts A B)) ↑ Γ js = do
+  as ← TypingRule-TArgs E ↑ ts js
+  return (◇ ⊢ (↑Expr (SubstM ↑ as) (weaken^ (A .type))) == (↑Expr (SubstM ↑ as) (weaken^ (B .type))))
+rule (ERule E (Tm= ts (A <: u / _ // v / _))) ↑ Γ js = do
+  as ← TypingRule-TArgs E ↑ ts js
+  return (◇ ⊢ (↑Expr (SubstM ↑ as) (weaken^ u)) == (↑Expr (SubstM ↑ as) (weaken^ u)) :> ↑Expr (SubstM ↑ as) (weaken^ A))

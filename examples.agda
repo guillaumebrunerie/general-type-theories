@@ -43,17 +43,32 @@ module _ where
   ΠUEl-TT3 : TypeTheory
   ΠUEl-TT3 = ΠUEl-TT2 , TypingRuleapp
 
-  TypingRuleU : TypingRule (TTDer ΠUEl-TT3) [] Ty
-  TypingRuleU = Ty []
+  TypingRuleBeta : EqualityRule (TTDer ΠUEl-TT3) ([] , (0 , Ty) , (1 , Ty) , (1 , Tm) , (0 , Tm)) Tm=
+  TypingRuleBeta = Tm= ([] , Ty []
+                           , Ty ([] , (sym 0 [] / apr 0 []))
+                           , Tm ([] , (sym 1 [] / apr 1 []))
+                                (sym 1 ([] , sym 0 []) /
+                                 apr 1 (_,_ {j = ◇ ⊢ _ :> _} [] (apr 0 [])))
+                           , Tm [] (sym 2 [] / apr 2 []))
+                       (sym 2 ([] , sym 0 []) <:
+                         sym 4 ([] , sym 3 [] , sym 2 ([] , var last) , sym 5 ([] , sym 3 [] , sym 2 ([] , var last) , sym 1 ([] , var last)) , sym 0 []) /
+                         {!apr 4 ([] , apr 3 [] , flat {j = (◇ , _) ⊢ _} (apr 2 ([] , apr (str (var 0)) ([] , apr 3 []))) , apr 5 ([] , apr 3 [] , flat {j = (◇ , _) ⊢ _} (apr 2 ([] , apr (str (var 0)) ([] , apr 3 []))) , flat {j = (◇ , _) ⊢ _ :> _} ?) , apr 0 [])!}
+                         // sym 1 ([] , sym 0 []) / apr 1 ([] , apr 0 []))
 
   ΠUEl-TT4 : TypeTheory
-  ΠUEl-TT4 = ΠUEl-TT3 , TypingRuleU
+  ΠUEl-TT4 = ΠUEl-TT3 ,= TypingRuleBeta
+
+  TypingRuleU : TypingRule (TTDer ΠUEl-TT4) [] Ty
+  TypingRuleU = Ty []
+
+  ΠUEl-TT5 : TypeTheory
+  ΠUEl-TT5 = ΠUEl-TT4 , TypingRuleU
   
-  TypingRuleEl : TypingRule (TTDer ΠUEl-TT4) ([] , (0 , Tm)) Ty
+  TypingRuleEl : TypingRule (TTDer ΠUEl-TT5) ([] , (0 , Tm)) Ty
   TypingRuleEl = Ty ([] , Tm [] (sym 0 [] / apr 0 []))
 
   ΠUEl-TT : TypeTheory
-  ΠUEl-TT = ΠUEl-TT4 , TypingRuleEl
+  ΠUEl-TT = ΠUEl-TT5 , TypingRuleEl
 
 
 {- Natural numbers -}
