@@ -29,10 +29,10 @@ that some judgments are supposed to have certain sorts.
 -}
 
 data Judgment (Σ : Signature) {m : ℕ} (Γ : Ctx Σ m) (n : ℕ) : JudgmentSort → Set where
-  _⊢_       : (Δ : DepCtx Σ m n) → TyExpr Σ (n + m) → Judgment Σ Γ n Ty
-  _⊢_:>_    : (Δ : DepCtx Σ m n) → TmExpr Σ (n + m) → TyExpr Σ (n + m) → Judgment Σ Γ n Tm
-  _⊢_==_    : (Δ : DepCtx Σ m n) → TyExpr Σ (n + m) → TyExpr Σ (n + m) → Judgment Σ Γ n Ty=
-  _⊢_==_:>_ : (Δ : DepCtx Σ m n) → TmExpr Σ (n + m) → TmExpr Σ (n + m) → TyExpr Σ (n + m)
+  _⊢_       : (Δ : DepCtx Σ m n) → TyExpr Σ (m + n) → Judgment Σ Γ n Ty
+  _⊢_:>_    : (Δ : DepCtx Σ m n) → TmExpr Σ (m + n) → TyExpr Σ (m + n) → Judgment Σ Γ n Tm
+  _⊢_==_    : (Δ : DepCtx Σ m n) → TyExpr Σ (m + n) → TyExpr Σ (m + n) → Judgment Σ Γ n Ty=
+  _⊢_==_:>_ : (Δ : DepCtx Σ m n) → TmExpr Σ (m + n) → TmExpr Σ (m + n) → TyExpr Σ (m + n)
             → Judgment Σ Γ n Tm=
 
 
@@ -64,10 +64,13 @@ open DerivationRule public
 
 {- A derivability structure consists of a bunch of derivation rules, indexed by their arities -}
 
+data Tag : Set where
+  S T C Eq : Tag
+
 record DerivabilityStructure (Σ : Signature) : Set₁ where
   field
-    Rules : JudgmentArity → Set
-    derivationRule : {ar : JudgmentArity} (r : Rules ar) {n : ℕ} → DerivationRule Σ ar n
+    Rules : Tag → JudgmentArity → Set
+    derivationRule : {t : Tag} {ar : JudgmentArity} (r : Rules t ar) {n : ℕ} → DerivationRule Σ ar n
 open DerivabilityStructure public
 
 
@@ -75,11 +78,11 @@ open DerivabilityStructure public
 
 module _ {Σ : Signature} {m : ℕ} {Γ : Ctx Σ m} where
 
-  Γ+_ : {l : ℕ} (Δ : DepCtx Σ m l) → Ctx Σ (l + m)
+  Γ+ : {l : ℕ} (Δ : DepCtx Σ m l) → Ctx Σ (m + l)
   Γ+ ◇ = Γ
   Γ+ (Δ , A) = (Γ+ Δ , A)
 
-  exchangeCtx : {n : ℕ} {k : JudgmentSort} → Judgment Σ Γ n k → Ctx Σ (n + m)
+  exchangeCtx : {n : ℕ} {k : JudgmentSort} → Judgment Σ Γ n k → Ctx Σ (m + n)
   exchangeCtx (Δ ⊢ A)           = Γ+ Δ
   exchangeCtx (Δ ⊢ u :> A)      = Γ+ Δ
   exchangeCtx (Δ ⊢ A == B)      = Γ+ Δ
@@ -105,7 +108,7 @@ The type [Derivable E j] represents the fact that the judgment [j] is derivable.
 -}
 
 data Derivable {Σ : Signature} (E : DerivabilityStructure Σ)
-     : {m : ℕ} {Γ : Ctx Σ m} {n : ℕ} {k : JudgmentSort} → Judgment Σ Γ n k → Prop
+     : {m : ℕ} {Γ : Ctx Σ m} {k : JudgmentSort} → Judgment Σ Γ 0 k → Prop
 
 data DerivableArgs {Σ : Signature} (E : DerivabilityStructure Σ) {m : ℕ} {Γ : Ctx Σ m}
      : {ar : JudgmentArityArgs} → DerivationRulePremises Σ Γ ar → Prop where
@@ -113,11 +116,73 @@ data DerivableArgs {Σ : Signature} (E : DerivabilityStructure Σ) {m : ℕ} {Γ
   _,_ : {n : ℕ} {k : JudgmentSort} {j : Judgment Σ Γ n k}
         {ar : JudgmentArityArgs} {js : DerivationRulePremises Σ Γ ar}
         → DerivableArgs E js
-        → Derivable E j
+        → Derivable E (exchange j)
         → DerivableArgs E (js , j)
 
 data Derivable {Σ} E where
-  apr : {ar : JudgmentArity} (r : Rules E ar) {m : ℕ} {Γ : Ctx Σ m} {js : DerivationRulePremises Σ Γ (args ar)}
+  apr : (t : Tag) {ar : JudgmentArity} (r : Rules E t ar) {m : ℕ} {Γ : Ctx Σ m}
+        {js : DerivationRulePremises Σ Γ (args ar)}
         (js-der : DerivableArgs E js) {{def : isDefined (rule (derivationRule E r) idSig Γ js)}}
           → Derivable E (rule (derivationRule E r) idSig Γ js $ def)
-  flat : {m : ℕ} {Γ : Ctx Σ m} {n : ℕ} {k : JudgmentSort} {j : Judgment Σ Γ (suc n) k} → Derivable E (exchange j) → Derivable E j
+
+
+{- Special cases of [_,_], used to make Agda not blow up -}
+
+_,0Ty_ : ∀ {Σ} {E} {m} {Γ : Ctx Σ m} {A : _}
+        {ar : JudgmentArityArgs} {js : DerivationRulePremises Σ Γ ar}
+        → DerivableArgs E js
+        → Derivable E (◇ ⊢ A)
+        → DerivableArgs E (js , ◇ ⊢ A)
+djs ,0Ty dj = djs , dj
+
+_,0Ty=_ : ∀ {Σ} {E} {m} {Γ : Ctx Σ m} {A B : _}
+        {ar : JudgmentArityArgs} {js : DerivationRulePremises Σ Γ ar}
+        → DerivableArgs E js
+        → Derivable E (◇ ⊢ A == B)
+        → DerivableArgs E (js , ◇ ⊢ A == B)
+djs ,0Ty= dj = djs , dj
+
+_,0Tm_ : ∀ {Σ} {E} {m} {Γ : Ctx Σ m} {u : _} {A : _}
+        {ar : JudgmentArityArgs} {js : DerivationRulePremises Σ Γ ar}
+        → DerivableArgs E js
+        → Derivable E (◇ ⊢ u :> A)
+        → DerivableArgs E (js , ◇ ⊢ u :> A)
+djs ,0Tm dj = djs , dj
+
+_,0Tm=_ : ∀ {Σ} {E} {m} {Γ : Ctx Σ m} {u v : _} {A : _}
+        {ar : JudgmentArityArgs} {js : DerivationRulePremises Σ Γ ar}
+        → DerivableArgs E js
+        → Derivable E (◇ ⊢ u == v :> A)
+        → DerivableArgs E (js , ◇ ⊢ u == v :> A)
+djs ,0Tm= dj = djs , dj
+
+_,1Ty_ : ∀ {Σ} {E} {m} {Γ : Ctx Σ m} {A} {B}
+        {ar : JudgmentArityArgs} {js : DerivationRulePremises Σ Γ ar}
+        → DerivableArgs E js
+        → Derivable E (exchange ((◇ , A) ⊢ B))
+        → DerivableArgs E (js , (◇ , A) ⊢ B)
+djs ,1Ty dj = djs , dj
+
+_,1Ty=_ : ∀ {Σ} {E} {m} {Γ : Ctx Σ m} {A} {B C}
+        {ar : JudgmentArityArgs} {js : DerivationRulePremises Σ Γ ar}
+        → DerivableArgs E js
+        → Derivable E (exchange ((◇ , A) ⊢ B == C))
+        → DerivableArgs E (js , (◇ , A) ⊢ B == C)
+djs ,1Ty= dj = djs , dj
+
+_,1Tm_ : ∀ {Σ} {E} {m} {Γ : Ctx Σ m} {u : _} {A : _} {B : _}
+        {ar : JudgmentArityArgs} {js : DerivationRulePremises Σ Γ ar}
+        → DerivableArgs E js
+        → Derivable E (exchange ((◇ , B) ⊢ u :> A))
+        → DerivableArgs E (js , (◇ , B) ⊢ u :> A)
+djs ,1Tm dj = djs , dj
+
+_,1Tm=_ : ∀ {Σ} {E} {m} {Γ : Ctx Σ m} {u v : _} {A : _} {B : _}
+        {ar : JudgmentArityArgs} {js : DerivationRulePremises Σ Γ ar}
+        → DerivableArgs E js
+        → Derivable E (exchange ((◇ , B) ⊢ u == v :> A))
+        → DerivableArgs E (js , (◇ , B) ⊢ u == v :> A)
+djs ,1Tm= dj = djs , dj
+
+infixl 4 _,0Ty_ _,0Ty=_ _,0Tm_ _,0Tm=_
+         _,1Ty_ _,1Ty=_ _,1Tm_ _,1Tm=_

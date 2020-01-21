@@ -36,10 +36,10 @@ TySymmRule : {n : ℕ} → DerivationRule Σ (([] , (0 , Ty=)) , Ty=) n
 rule TySymmRule ↑ Γ ([] , ◇ ⊢ A == B) = return (◇ ⊢ B == A)
 
 TyTranRule : {n : ℕ} → DerivationRule Σ (([] , (0 , Ty=) , (0 , Ty=)) , Ty=) n
-rule TyTranRule ↑ Γ ([] , ◇ ⊢ A == B , ◇ ⊢ B' == C) =
+rule TyTranRule ↑ Γ ([] , ◇ ⊢ A == B , ◇ ⊢ B' == D) =
   do
     assume (B ≡ B')
-    return (◇ ⊢ A == C)
+    return (◇ ⊢ A == D)
 
 
 TmReflRule : {n : ℕ} → DerivationRule Σ (([] , (0 , Tm)) , Tm=) n
@@ -63,25 +63,40 @@ mutually recursive
 
 StructuralRules : DerivabilityStructure Σ
 
-data StructuralRulesType : {ar : JudgmentArity} → Set where
-  var : ℕ → StructuralRulesType
-  conv : StructuralRulesType
-  convEq : StructuralRulesType
-  tyRefl : StructuralRulesType
-  tySymm : StructuralRulesType
-  tyTran : StructuralRulesType
-  tmRefl : StructuralRulesType
-  tmSymm : StructuralRulesType
-  tmTran : StructuralRulesType
+-- See #4366
+private
+  ar1 = _
+  ar2 = _
+  ar3 = _
+  ar4 = _
+  ar5 = _
+  ar6 = _
+  ar7 = _
+  ar8 = _
+  ar9 = _
 
-Rules StructuralRules ar = StructuralRulesType {ar}
-derivationRule StructuralRules (var k) = VarRule k
-derivationRule StructuralRules conv = ConvRule
-derivationRule StructuralRules convEq = ConvEqRule
-derivationRule StructuralRules tyRefl = TyReflRule
-derivationRule StructuralRules tySymm = TySymmRule
-derivationRule StructuralRules tyTran = TyTranRule
-derivationRule StructuralRules tmRefl = TmReflRule
-derivationRule StructuralRules tmSymm = TmSymmRule
-derivationRule StructuralRules tmTran = TmTranRule
+data StructuralRulesType : {ar : JudgmentArity} → Set where
+  var : ℕ → StructuralRulesType {ar1}
+  conv : StructuralRulesType {ar2}
+  convEq : StructuralRulesType {ar3}
+  tyRefl : StructuralRulesType {ar4}
+  tySymm : StructuralRulesType {ar5}
+  tyTran : StructuralRulesType {ar6}
+  tmRefl : StructuralRulesType {ar7}
+  tmSymm : StructuralRulesType {ar8}
+  tmTran : StructuralRulesType {ar9}
+
+Rules StructuralRules S ar = StructuralRulesType {ar}
+Rules StructuralRules T ar = Empty
+Rules StructuralRules C ar = Empty
+Rules StructuralRules E ar = Empty
+derivationRule StructuralRules {t = S} (var k) = VarRule k
+derivationRule StructuralRules {t = S} conv = ConvRule
+derivationRule StructuralRules {t = S} convEq = ConvEqRule
+derivationRule StructuralRules {t = S} tyRefl = TyReflRule
+derivationRule StructuralRules {t = S} tySymm = TySymmRule
+derivationRule StructuralRules {t = S} tyTran = TyTranRule
+derivationRule StructuralRules {t = S} tmRefl = TmReflRule
+derivationRule StructuralRules {t = S} tmSymm = TmSymmRule
+derivationRule StructuralRules {t = S} tmTran = TmTranRule
 

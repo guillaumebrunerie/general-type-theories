@@ -1,8 +1,7 @@
 {-# OPTIONS --rewriting --prop #-}
 
 open import Agda.Primitive public
-open import Agda.Builtin.Nat public renaming (Nat to ℕ) hiding (_==_)
-open import Agda.Builtin.List public
+open import Agda.Builtin.Nat public renaming (Nat to ℕ) hiding (_==_; _+_)
 open import Agda.Builtin.Bool public
 
 {- Basic datatypes and propositions -}
@@ -72,7 +71,7 @@ instance
 
 data _≡_ {l} {A : Set l} (x : A) : A → Prop l where
   instance refl : x ≡ x
-{-# BUILTIN EQUALITY _≡_ #-}
+--{-# BUILTIN EQUALITY _≡_ #-}
 {-# BUILTIN REWRITE _≡_ #-}
 
 infix 4 _≡_
@@ -140,48 +139,80 @@ instance
 
 assume : (P : Prop) → Partial (Box P)
 isDefined (assume P) = P
-unbox (assume P $ x) = x
+assume P $ x = box x
 
 fail : {A : Set} → Partial A
 isDefined fail = ⊥
 
 
-{- Rewrite rules for the natural numbers (!!!) -}
-
-+O-rewrite : {n : ℕ} → n + zero ≡ n
-+O-rewrite {zero} = refl
-+O-rewrite {suc n} = ap suc +O-rewrite
-{-# REWRITE +O-rewrite #-}
-
-+S-rewrite : {n m : ℕ} → m + suc n ≡ suc (m + n)
-+S-rewrite {m = zero} = refl
-+S-rewrite {m = suc m} = ap suc +S-rewrite
-{-# REWRITE +S-rewrite #-}
-
-assoc : {n m k : ℕ} → n + (m + k) ≡ (n + m) + k
-assoc {n = zero} = refl
-assoc {n = suc n} {m} {k} = ap suc (assoc {n = n} {m} {k})
-{-# REWRITE assoc #-}
-
-
 {- Properties of the natural numbers -}
 
-data _≤_ : (n m : ℕ) → Prop where
-  instance ≤0 : {n : ℕ} → 0 ≤ n
-  ≤S : {n m : ℕ} → n ≤ m → suc n ≤ suc m
+data _≤_ : (n m : ℕ) → Set where
+  instance ≤r : {n : ℕ} → n ≤ n
+  ≤S : {n m : ℕ} → n ≤ m → n ≤ suc m
+
+≤P : {n m : ℕ} → suc n ≤ suc m → n ≤ m
+≤P ≤r = ≤r
+≤P {n} {suc m} (≤S p) = ≤S (≤P p)
+
+_+_ : ℕ → ℕ → ℕ
+n + zero = n
+n + suc m = suc (n + m)
 
 instance
-  ≤r : {n : ℕ} → n ≤ n
-  ≤r {zero} = ≤0
-  ≤r {suc n} = ≤S ≤r
+  ≤-+ : {n m : ℕ} → n ≤ (n + m)
+  ≤-+ {m = zero} = ≤r
+  ≤-+ {m = suc m} = ≤S (≤-+ {m = m})
 
-  ≤+ : {n m : ℕ} → n ≤ (m + n)
-  ≤+ {zero} {m} = ≤0
-  ≤+ {suc n} {m} = ≤S ≤+
+  0≤ : {n : ℕ} → 0 ≤ n
+  0≤ {zero} = ≤r
+  0≤ {suc n} = ≤S (0≤ {n})
 
-  ≤tr : {n m k : ℕ} {{_ : n ≤ m}} {{_ : m ≤ k}} → n ≤ k
-  ≤tr ⦃ ≤0 ⦄ ⦃ q ⦄ = ≤0
-  ≤tr ⦃ ≤S p ⦄ ⦃ ≤S q ⦄ = ≤S (≤tr ⦃ p ⦄ ⦃ q ⦄)
+≤SS : {n m : ℕ} {{_ : n ≤ m}} → suc n ≤ suc m
+≤SS {.0} {zero} ⦃ ≤r ⦄ = ≤r
+≤SS {.(suc m)} {suc m} ⦃ ≤r ⦄ = ≤r
+≤SS {n} {suc m} ⦃ ≤S p ⦄ = ≤S (≤SS {n} {m} {{p}})
+
+≤+ : (l : ℕ) {n m : ℕ} {{_ : n ≤ m}} → (n + l) ≤ (m + l)
+≤+ l {{≤r}} = ≤r
+≤+ zero {{ ≤S p }} = ≤S p
+≤+ (suc l) {{ ≤S p }} = ≤SS {{≤+ l {{≤S p}}}}
+-- ≤+ zero {{p}} = p
+-- ≤+ (suc l) = ≤SS {{≤+ l}}
+
+≤tr : {n m k : ℕ} {{_ : n ≤ m}} {{_ : m ≤ k}} → n ≤ k
+≤tr ⦃ ≤r ⦄ ⦃ q ⦄ = q
+≤tr ⦃ ≤S p ⦄ ⦃ ≤r ⦄ = ≤S p
+≤tr ⦃ ≤S p ⦄ ⦃ ≤S q ⦄ = ≤S (≤tr {{≤S p}} {{q}})
+
+
+{- Rewrite rules for the natural numbers (!!!) -}
+
+-- +O-rewrite : {n : ℕ} → n + zero ≡ n
+-- +O-rewrite {zero} = refl
+-- +O-rewrite {suc n} = ap suc +O-rewrite
+-- {-# REWRITE +O-rewrite #-}
+
+-- +S-rewrite : {n m : ℕ} → m + suc n ≡ suc (m + n)
+-- +S-rewrite {m = zero} = refl
+-- +S-rewrite {m = suc m} = ap suc +S-rewrite
+-- {-# REWRITE +S-rewrite #-}
+
+data _===_ {l} {A : Set l} (x : A) : A → Set l where
+  instance refl : x === x
+{-# BUILTIN EQUALITY _===_ #-}
+
+infix 4 _===_
+
+assoc : {n m k : ℕ} → n + (m + k) === (n + m) + k
+assoc {k = zero} = refl
+assoc {n} {m} {k = suc k} rewrite assoc {n} {m} {k = k} = refl
+
+transport : {A : Set} {P : A → Set} {a b : A} → a === b → P a → P b
+transport refl u = u
+
+transport! : {A : Set} {P : A → Set} {a b : A} → a === b → P b → P a
+transport! refl u = u
 
 
 {- Instance arguments -}
@@ -203,14 +234,19 @@ data VarPos : ℕ → Set where
   last : {n : ℕ} → VarPos (suc n)
   prev : {n : ℕ} → VarPos n → VarPos (suc n)
 
+-- Size of the context before (and excluding) that variable
+_-VarPos'_ : (n : ℕ) → VarPos n → ℕ
+(suc n) -VarPos' last = n
+(suc n) -VarPos' prev k = n -VarPos' k
+
 -- Size of the context before (and including) that variable
 _-VarPos_ : (n : ℕ) → VarPos n → ℕ
-n -VarPos k = suc (n -VarPos' k) where
+n -VarPos k = suc (n -VarPos' k)
 
-  -- Size of the context before (and excluding) that variable
-  _-VarPos'_ : (n : ℕ) → VarPos n → ℕ
-  (suc m) -VarPos' last = m
-  (suc m) -VarPos' prev k = m -VarPos' k
+--instance
+suc-VarPos'≤ : {n : ℕ} {p : VarPos (suc n)} → (suc n -VarPos' p) ≤ n
+suc-VarPos'≤ {n} {last} = ≤r
+suc-VarPos'≤ {suc n} {prev p} = ≤tr {{suc-VarPos'≤ {n} {p}}} {{≤S ≤r}}
 
 
 {- Positions of weakening spots in a context -}
@@ -219,6 +255,14 @@ data WeakPos : ℕ → Set where
   last : {n : ℕ} → WeakPos n
   prev : {n : ℕ} → WeakPos n → WeakPos (suc n)
 
-weakenWeakPos : {n : ℕ} (m : ℕ) → WeakPos n → WeakPos (m + n)
-weakenWeakPos zero k = k
-weakenWeakPos (suc m) k = prev (weakenWeakPos m k)
+-- weakPosAt : {m : ℕ} (n : ℕ) → WeakPos (m + n)
+-- weakPosAt zero = last
+-- weakPosAt (suc n) = prev (weakPosAt n)
+
+-- weakenWeakPos : {n : ℕ} (m : ℕ) → WeakPos n → WeakPos (n + m)
+-- weakenWeakPos zero k = k
+-- weakenWeakPos (suc m) k = prev (weakenWeakPos m k)
+
+weakenWeakPos2 : {n m : ℕ} {{_ : n ≤ m}} → WeakPos n → WeakPos m
+weakenWeakPos2 ⦃ ≤r ⦄ k = k
+weakenWeakPos2 ⦃ ≤S p ⦄ k = prev (weakenWeakPos2 {{p}} k)

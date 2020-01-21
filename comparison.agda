@@ -62,6 +62,9 @@ data NJudgment : Set where
 NDerivable : NJudgment → Prop
 NDerivable (njudgment Γ j) = N.Derivable (TTDer ΠUEl-TT) j
 
+NDerivable= : {j j' : NJudgment} (j= : j ≡ j') → NDerivable j' → NDerivable j
+NDerivable= refl x = x
+
 T→NCtx : {n : ℕ} → T.Ctx n → N.Ctx Σ n
 T→NCtx ◇ = ◇
 T→NCtx (Γ , A) = (T→NCtx Γ , T→N A)
@@ -74,24 +77,37 @@ T→NJ (Γ ⊢ u == v :> A) = njudgment (T→NCtx Γ) (◇ ⊢ T→N u == T→N 
 
 
 T→NDer : {j : T.Judgment} → T.Derivable j → NDerivable (T→NJ j)
-T→NDer (Var k d) = apr {!str (var ?)!} {!!}
-T→NDer (TyRefl dA) = apr (str tyRefl) ([] , T→NDer dA)
-T→NDer (TySymm dA=) = apr (str tySymm) ([] , T→NDer dA=)
-T→NDer (TyTran dB dA= dB=) = apr (str tyTran) ([] , T→NDer dA= , T→NDer dB=)
-T→NDer (TmRefl du) = apr (str tmRefl) ([] , T→NDer du)
-T→NDer (TmSymm du=) = apr (str tmSymm) ([] , T→NDer du=)
-T→NDer (TmTran dv du= dv=) = apr (str tmTran) ([] , T→NDer du= , T→NDer dv=)
-T→NDer (Conv dA du dA=) = apr (str conv) ([] , T→NDer du , T→NDer dA=)
-T→NDer (ConvEq dA du= dA=) = apr (str convEq) ([] , T→NDer du= , T→NDer dA=)
-T→NDer UU = apr 1 []
-T→NDer UUCong = {!!}
-T→NDer (El dv) = apr 0 ([] , T→NDer dv)
-T→NDer (ElCong dv) = {!!}
-T→NDer (Pi dA dB) = apr 4 ([] , T→NDer dA , flat {!T→NDer dB!})
-T→NDer (PiCong d d₁ d₂) = {!!}
-T→NDer (Lam d d₁ d₂) = apr 3 {!!}
+T→NDer (Var k dA) = NDerivable= {!!} (apr S (var {!!}) ([] ,0Ty NDerivable= {!!} (T→NDer dA)))
+T→NDer (TyRefl dA) = apr S tyRefl ([] , T→NDer dA)
+T→NDer (TySymm dA=) = apr S tySymm ([] , T→NDer dA=)
+T→NDer (TyTran dB dA= dB=) = apr S tyTran ([] , T→NDer dA= , T→NDer dB=)
+T→NDer (TmRefl du) = apr S tmRefl ([] , T→NDer du)
+T→NDer (TmSymm du=) = apr S tmSymm ([] , T→NDer du=)
+T→NDer (TmTran dv du= dv=) = apr S tmTran ([] , T→NDer du= , T→NDer dv=)
+T→NDer (Conv dA du dA=) = apr S conv ([] , T→NDer du , T→NDer dA=)
+T→NDer (ConvEq dA du= dA=) = apr S convEq ([] , T→NDer du= , T→NDer dA=)
+T→NDer UU = apr T 1 []
+T→NDer UUCong = apr C 1 []
+T→NDer (El dv) = apr T 0 ([] ,0Tm T→NDer dv)
+T→NDer (ElCong dv=) = apr C 0 ([] ,0Tm= T→NDer dv=)
+T→NDer (Pi dA dB) = apr T 4 ([] ,0Ty T→NDer dA ,1Ty NDerivable= (ap (λ z → njudgment (_ , z) (_ ⊢ _)) (weaken≤r _ ∙ weaken≤r _)) (T→NDer dB))
+T→NDer (PiCong dA dA= dB=) = apr C 4 ([] ,0Ty= T→NDer dA= ,1Ty= NDerivable= (ap (λ z → njudgment (_ , z) (_ ⊢ _ == _)) (weaken≤r _ ∙ weaken≤r _)) (T→NDer dB=))
+T→NDer (Lam {n = n} {A = A} {B = B} {u = u} dA dB du) = NDerivable= (! (ap (njudgment _) (ap3 (λ z z' z'' → ◇ ⊢ sym (prev (prev (prev new))) ([] , T→N A , z , T→N u) :> sym (prev (prev (prev (prev new)))) ([] , z' , z''))
+                                                                                           (weaken≤r _)
+                                                                                           (weaken≤r _ ∙ weaken≤r _)
+                                                                                           q)))
+                                            (apr T 3 (_,1Tm_ {u = T→N u} (_,1Ty_ {B = N.weaken last (T→N B)} ([] ,0Ty T→NDer dA)
+                                                            (NDerivable= (ap2 (λ z z' → njudgment (_ , z) (◇ ⊢ z')) (weaken≤r _ ∙ weaken≤r _) (weaken≤r _)) (T→NDer dB)))
+                                                            (NDerivable= (ap3 (λ z z' z'' → njudgment (_ , z) (◇ ⊢ z' :> z'')) (weaken≤r _ ∙ weaken≤r _) refl (! p)) (T→NDer du))))
+                                                            where
+
+     q = {!Subst1-last (weaken^' {n = n} {1} {n} (weaken^' {n = n} {1} {n} (T→N B))) ∙ weaken^'≤r (weaken^' {n = n} {1} {n} (T→N B)) ∙ weaken^'≤r (T→N B)!}
+     p = {!! q!} -- ∙ {!Subst1-last (weaken^' {n = {!!}} {1} {{!!}} {!!}) ∙ {!!}
+                          -- ((apr T 3 ([] ,0Ty T→NDer dA
+                          --               ,1Ty NDerivable= (ap2 (λ z z' → njudgment (_ , z) (◇ ⊢ z')) (! (weaken^'≤r _ ∙ weaken^'≤r _)) {!refl!}) (T→NDer dB)
+                          --               ,1Tm NDerivable= (ap3 (λ z z' z'' → njudgment (_ , z) (◇ ⊢ z' :> z'')) (! (weaken^'≤r _ ∙ weaken^'≤r _)) {!!} (! (Subst1-last (T→N B)))) (T→NDer du))))
 T→NDer (LamCong d d₁ d₂ d₃) = {!!}
-T→NDer (App dA dB df da) = {!apr 2 ([] , T→NDer dA , flat {j = (◇ , _) ⊢ _} (T→NDer dB) , T→NDer df , T→NDer da)!}
+T→NDer (App dA dB df da) = {!apr T 2 ([] ,0Ty {!T→NDer dA!} ,1Ty {!T→NDer dB!} ,0Tm {!T→NDer df!} ,0Tm {!T→NDer da!})!}
 T→NDer (AppCong d d₁ d₂ d₃ d₄) = {!!}
 T→NDer (BetaPi d d₁ d₂ d₃) = {!!}
 
@@ -107,22 +123,24 @@ N→TJ (njudgment Γ (◇ ⊢ A == B)) = N→TCtx Γ ⊢ N→T A == N→T B
 N→TJ (njudgment Γ (◇ ⊢ u == v :> A)) = N→TCtx Γ ⊢ N→T u == N→T v :> N→T A
 
 N→TDer : {j : NJudgment} → NDerivable j → T.Derivable (N→TJ j)
-N→TDer {njudgment Γ _} (apr typingrule {js = [] , (◇ ⊢ v :> _)} ([] , dv) {{ (tt , (tt , (refl , tt))) , tt }}) = El (N→TDer dv)
-N→TDer {njudgment Γ _} (apr congruencerule {js = [] , ◇ ⊢ v == v' :> _} ([] , dv=) {{((tt , (tt , (tt , (refl , tt)))) , tt)}}) = ElCong (N→TDer dv=)
-N→TDer {njudgment Γ _} (apr (prev typingrule) []) = UU
-N→TDer {njudgment Γ _} (apr (prev congruencerule) []) = UUCong
-N→TDer {njudgment Γ _} (apr (prev (prev typingrule)) js-der) = {!!}
-N→TDer {njudgment Γ _} (apr (prev (prev congruencerule)) js-der) = {!!}
-N→TDer {njudgment Γ _} (apr (prev (prev (prev typingrule))) js-der) = {!!}
-N→TDer {njudgment Γ _} (apr (prev (prev (prev congruencerule))) js-der) = {!!}
-N→TDer {njudgment Γ _} (apr (prev (prev (prev (prev typingrule)))) js-der) = {!!}
-N→TDer {njudgment Γ _} (apr (prev (prev (prev (prev congruencerule)))) js-der) = {!!}
-N→TDer {njudgment Γ _} (apr (prev (prev (prev (prev (prev (var k)))))) js-der) = {!r!}
-N→TDer {njudgment Γ _} (apr (prev (prev (prev (prev (prev conv))))) js-der) = {!r!}
-N→TDer {njudgment Γ _} (apr (prev (prev (prev (prev (prev convEq))))) js-der) = {!r!}
-N→TDer {njudgment Γ _} (apr (prev (prev (prev (prev (prev tyRefl))))) {js = [] , ◇ ⊢ A} ([] , dA)) = TyRefl (N→TDer dA)
-N→TDer {njudgment Γ _} (apr (prev (prev (prev (prev (prev tySymm))))) {js = [] , ◇ ⊢ A == B} ([] , dA=)) = TySymm (N→TDer dA=)
-N→TDer {njudgment Γ _} (apr (prev (prev (prev (prev (prev tyTran))))) {js = [] , ◇ ⊢ A == B , ◇ ⊢ B == C} ([] , dA= , dB=) {{refl , tt}}) = TyTran {!def!} (N→TDer dA=) (N→TDer dB=)
-N→TDer {njudgment Γ _} (apr (prev (prev (prev (prev (prev tmRefl))))) {js = [] , ◇ ⊢ u :> A} ([] , du)) = TmRefl (N→TDer du)
-N→TDer {njudgment Γ _} (apr (prev (prev (prev (prev (prev tmSymm))))) {js = [] , ◇ ⊢ u == v :> A} ([] , du=)) = TmSymm (N→TDer du=)
-N→TDer {njudgment Γ _} (apr (prev (prev (prev (prev (prev tmTran))))) {js = [] , ◇ ⊢ u == v :> A , ◇ ⊢ v == w :> A} ([] , du= , dv=) {{refl , (refl , tt)}}) = TmTran {!def!} (N→TDer du=) (N→TDer dv=)
+N→TDer {njudgment Γ _} (apr S (var k) js-der) = {!Var!}
+N→TDer {njudgment Γ _} (apr S conv js-der) = {!Conv!}
+N→TDer {njudgment Γ _} (apr S convEq js-der) = {!ConvEq!}
+N→TDer {njudgment Γ _} (apr S tyRefl {js = [] , ◇ ⊢ A} ([] , dA)) = TyRefl (N→TDer dA)
+N→TDer {njudgment Γ _} (apr S tySymm {js = [] , ◇ ⊢ A == B} ([] , dA=)) = TySymm (N→TDer dA=)
+N→TDer {njudgment Γ _} (apr S tyTran {js = [] , ◇ ⊢ A == B , ◇ ⊢ B == D} ([] , dA= , dB=) {{refl , tt}}) = TyTran {! -!} (N→TDer dA=) (N→TDer dB=)
+N→TDer {njudgment Γ _} (apr S tmRefl {js = [] , ◇ ⊢ u :> A} ([] , du)) = TmRefl (N→TDer du)
+N→TDer {njudgment Γ _} (apr S tmSymm {js = [] , ◇ ⊢ u == v :> A} ([] , du=)) = TmSymm (N→TDer du=)
+N→TDer {njudgment Γ _} (apr S tmTran {js = [] , ◇ ⊢ u == v :> A , ◇ ⊢ v == w :> A} ([] , du= , dv=) {{refl , (refl , tt)}}) = TmTran {! -!} (N→TDer du=) (N→TDer dv=)
+N→TDer {njudgment Γ _} (apr T typingrule {js = [] , (◇ ⊢ v :> _)} ([] , dv) {{ (tt , (tt , (refl , tt))) , tt }}) = El (N→TDer dv)
+N→TDer {njudgment Γ _} (apr T (prev typingrule) []) = UU
+N→TDer {njudgment Γ _} (apr T (prev (prev typingrule)) js-der) = {!App!}
+N→TDer {njudgment Γ _} (apr T (prev (prev (prev typingrule))) js-der) = {!Lam!}
+N→TDer {njudgment Γ _} (apr T (prev (prev (prev (prev typingrule)))) js-der) = {!Pi!}
+N→TDer {njudgment Γ _} (apr C congruencerule {js = [] , ◇ ⊢ v == v' :> _} ([] , dv=) {{((tt , (tt , (refl , tt))) , tt)}}) = ElCong (N→TDer dv=)
+N→TDer {njudgment Γ _} (apr C (prev congruencerule) []) = UUCong
+N→TDer {njudgment Γ _} (apr C (prev (prev congruencerule)) js-der) = {!AppCong!}
+N→TDer {njudgment Γ _} (apr C (prev (prev (prev congruencerule))) js-der) = {!LamCong!}
+N→TDer {njudgment Γ _} (apr C (prev (prev (prev (prev congruencerule)))) js-der) = {!PiCong!}
+N→TDer {njudgment Γ _} (apr Eq equalityrule js-der) = {!Eta!}
+N→TDer {njudgment Γ _} (apr Eq (prev equalityrule) js-der) = {!Beta!}

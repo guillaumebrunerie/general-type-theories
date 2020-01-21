@@ -31,13 +31,10 @@ TTSig (t ,= _) = TTSig t
 
 TTDer ◇ = E₀
 TTDer (t , r) = extend (TTDer t) (TRules r)
-TTDer (t ,= r) = extend0 (TTDer t) (ERule _ r)
+TTDer (t ,= r) = extendE (TTDer t) (ERule _ r)
 
 
 {- Instances to make it possible to use numeric literals to refer to symbols and typing rules -}
-
-data _===_ {l} {A : Set l} (x : A) : A → Set l where
-  instance refl : x === x
 
 instance
   NumΣ₀ : Number Empty
@@ -49,31 +46,21 @@ instance
   Number.fromNat NumExtSig zero {{refl}} = new
   Number.fromNat (NumExtSig {{r}}) (suc n) = prev (Number.fromNat r n)
 
-  NumStructuralRulesType : {Σ : Signature} {ar : JudgmentArity} → Number (StructuralRulesType Σ {ar})
-  Number.Constraint NumStructuralRulesType n = Empty
-
-  NumExt : {A : JudgmentArity → Set} {ar : SyntaxArity} {ar' : JudgmentArity} {{_ : Number (A ar')}} → Number (Ext A ar ar')
-  Number.Constraint (NumExt {ar = ar} {ar'}) zero = TArity ar === ar'
-  Number.Constraint (NumExt {{r}}) (suc n) = Number.Constraint r n
-  Number.fromNat NumExt zero {{refl}} = typingrule
-  Number.fromNat (NumExt {{r}}) (suc n) = prev (Number.fromNat r n)
-
-  NumExt0 : {A : JudgmentArity → Set} {nar ar' : JudgmentArity} {{_ : Number (A ar')}} → Number (Ext0 A nar ar')
-  Number.Constraint (NumExt0 {nar = nar} {ar'}) zero = nar === ar'
-  Number.Constraint (NumExt0 {{r}}) (suc n) = Number.Constraint r n
-  Number.fromNat NumExt0 zero {{refl}} = equalityrule
-  Number.fromNat (NumExt0 {{r}}) (suc n) = prev (Number.fromNat r n)
-
-
-record HasStructuralRules (Σ : Signature) (A : JudgmentArity → Set) : Set where
-  field
-    str : {ar : JudgmentArity} → StructuralRulesType Σ {ar = ar} → A ar
-open HasStructuralRules {{...}} public
-
 instance
-  HasStructuralRules-id : {Σ : Signature} → HasStructuralRules Σ (λ ar → StructuralRulesType Σ {ar})
-  HasStructuralRules.str HasStructuralRules-id x = x
+  NumExtT : {A : JudgmentArity → Set} {ar : SyntaxArity} {ar' : JudgmentArity} {{_ : Number (A ar')}} → Number (ExtT A ar ar')
+  Number.Constraint (NumExtT {ar = ar} {ar'}) zero = TArity ar === ar'
+  Number.Constraint (NumExtT {{r}}) (suc n) = Number.Constraint r n
+  Number.fromNat NumExtT zero {{refl}} = typingrule
+  Number.fromNat (NumExtT {{r}}) (suc n) = prev (Number.fromNat r n)
 
-  HasStructuralRules-Ext : {Σ : Signature} {A : JudgmentArity → Set} {ar : SyntaxArity}
-                           {{_ : HasStructuralRules Σ A}} → HasStructuralRules Σ (Ext A ar)
-  HasStructuralRules.str HasStructuralRules-Ext x = prev (str x)
+  NumExtC : {A : JudgmentArity → Set} {ar : SyntaxArity} {ar' : JudgmentArity} {{_ : Number (A ar')}} → Number (ExtC A ar ar')
+  Number.Constraint (NumExtC {ar = ar} {ar'}) zero = CArity ar === ar'
+  Number.Constraint (NumExtC {{r}}) (suc n) = Number.Constraint r n
+  Number.fromNat NumExtC zero {{refl}} = congruencerule
+  Number.fromNat (NumExtC {{r}}) (suc n) = prev (Number.fromNat r n)
+
+  NumExtE : {A : JudgmentArity → Set} {nar ar' : JudgmentArity} {{_ : Number (A ar')}} → Number (ExtE A nar ar')
+  Number.Constraint (NumExtE {nar = nar} {ar'}) zero = nar === ar'
+  Number.Constraint (NumExtE {{r}}) (suc n) = Number.Constraint r n
+  Number.fromNat NumExtE zero {{refl}} = equalityrule
+  Number.fromNat (NumExtE {{r}}) (suc n) = prev (Number.fromNat r n)
