@@ -121,28 +121,52 @@ record Monad {ℓ ℓ'} (M : Set ℓ → Set ℓ') : Set (lsuc ℓ ⊔ ℓ') whe
 open Monad {{…}} public
 
 
+{- For the partiality monad, we use (dependent) lists of propositions in order to get rid of useless ⊤s -}
+
+data ListProp : Set₁
+pf : ListProp → Prop
+
+data ListProp where
+  [] : ListProp
+  [_] : Prop → ListProp
+  _,_ : (l : ListProp) → (pf l → ListProp) → ListProp
+
+pf [] = ⊤
+pf [ p ] = p
+pf ([] , p) = pf (p tt)
+pf (l , q) = ΣP (pf l) (λ x → pf (q x))
+
+lemma : {l : ListProp} {p : pf l → ListProp} → pf (l , p) → ΣP (pf l) (λ x → pf (p x))
+
+lemma {[]} q = tt , q
+lemma {[ p ]} q = q
+lemma {l , p} {r} q = (fst q , snd q)
+
 {- The partiality monad -}
 
 record Partial (A : Set) : Set₁ where
   field
-    isDefined : Prop
-    _$_ : isDefined → A
+    listIsDefined : ListProp
+    _$_ : pf listIsDefined → A
   infix 5 _$_
 open Partial public
 
+isDefined : {A : Set} → Partial A → Prop
+isDefined P = pf (listIsDefined P)
+
 instance
   PartialityMonad : Monad Partial
-  isDefined (Monad.return PartialityMonad x) = ⊤
+  listIsDefined (Monad.return PartialityMonad x) = []
   Monad.return PartialityMonad x Partial.$ tt = x
-  isDefined (Monad._>>=_ PartialityMonad a f) = ΣP (isDefined a) (λ x → isDefined (f (a $ x)))
-  Monad._>>=_ PartialityMonad a f Partial.$ x = f (a $ fst x) $ snd x
+  listIsDefined (Monad._>>=_ PartialityMonad a f) = listIsDefined a , (λ x → listIsDefined (f (a $ x)))
+  Monad._>>=_ PartialityMonad a f Partial.$ x = let x' = lemma {listIsDefined a} x in f (a $ fst x') $ snd x'
 
 assume : (P : Prop) → Partial (Box P)
-isDefined (assume P) = P
+listIsDefined (assume P) = [ P ]
 assume P $ x = box x
 
 fail : {A : Set} → Partial A
-isDefined fail = ⊥
+listIsDefined fail = [ ⊥ ]
 
 
 {- Properties of the natural numbers -}
@@ -163,6 +187,10 @@ instance
   ≤-+ : {n m : ℕ} → n ≤ (n + m)
   ≤-+ {m = zero} = ≤r
   ≤-+ {m = suc m} = ≤S (≤-+ {m = m})
+
+instance
+  ≤S0 : {n : ℕ} → n ≤ suc n
+  ≤S0 = ≤S ≤r
 
   0≤ : {n : ℕ} → 0 ≤ n
   0≤ {zero} = ≤r
@@ -204,9 +232,10 @@ data _===_ {l} {A : Set l} (x : A) : A → Set l where
 
 infix 4 _===_
 
-assoc : {n m k : ℕ} → n + (m + k) === (n + m) + k
+assoc : {n m k : ℕ} → (n + m) + k ≡ n + (m + k)
 assoc {k = zero} = refl
-assoc {n} {m} {k = suc k} rewrite assoc {n} {m} {k = k} = refl
+assoc {n} {m} {k = suc k} = ap suc (assoc {n} {m} {k = k})
+--{-# REWRITE assoc #-}
 
 transport : {A : Set} {P : A → Set} {a b : A} → a === b → P a → P b
 transport refl u = u

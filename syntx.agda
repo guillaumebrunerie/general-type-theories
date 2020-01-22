@@ -65,11 +65,19 @@ TmExpr Σ n = Expr Σ n Tm
 
 {- Weakening by a group of variable in the middle of a context -}
 
+weakenVL : {n m : ℕ} {{_ : n ≤ m}} → VarPos n → VarPos m
+weakenVL {{ ≤r }} x = x
+weakenVL {{ ≤S p }} x = prev (weakenVL {{p}} x)
+
 weakenV : {n m : ℕ} {{_ : n ≤ m}} (p : WeakPos n) → VarPos n → VarPos m
-weakenV {m = suc m} ⦃ p ⦄ (prev wp) last = last
-weakenV {m = suc m} ⦃ p ⦄ (prev wp) (prev x) = prev (weakenV {{≤P p}} wp x)
-weakenV {m = suc m} ⦃ ≤r ⦄ last x = x
-weakenV {m = suc m} ⦃ ≤S p ⦄ last x = prev (weakenV {{p}} last x)
+weakenV last x = weakenVL x
+weakenV {m = suc m} (prev wp) last = last
+weakenV {m = suc m} {{p}} (prev wp) (prev x) = prev (weakenV {{≤P p}} wp x)
+
+-- weakenV {m = suc m} ⦃ p ⦄ (prev wp) last = last
+-- weakenV {m = suc m} ⦃ p ⦄ (prev wp) (prev x) = prev (weakenV {{≤P p}} wp x)
+-- weakenV {m = suc m} ⦃ ≤r ⦄ last x = x
+-- weakenV {m = suc m} ⦃ ≤S p ⦄ last x = prev (weakenV {{p}} last x)
 
 weaken : {Σ : Signature} {k : _} {n m : ℕ} {{_ : n ≤ m}} (p : WeakPos n) → Expr Σ n k → Expr Σ m k
 weakenA : {Σ : Signature} {ar : _} {n m : ℕ} {{_ : n ≤ m}} (p : WeakPos n) → Args Σ n ar → Args Σ m ar
@@ -78,7 +86,7 @@ weaken p (var x) = var (weakenV p x)
 weaken p (sym s es) = sym s (weakenA p es)
 
 weakenA p [] = []
-weakenA p (_,_ {m = m} es e) = (weakenA p es , weaken {{≤+ m}} (weakenWeakPos2 {{≤-+}} p) e)
+weakenA p (_,_ {m = m} es e) = (weakenA p es , weaken {{≤+ m}} (weakenWeakPos2 {{≤-+ {m = m}}} p) e)
 
 weaken0 : {Σ : Signature} {k : _} {n : ℕ} → Expr Σ 0 k → Expr Σ n k
 weaken0 e = weaken last e
@@ -106,16 +114,16 @@ weaken0 e = weaken last e
 -- weaken^A {{p}} = weaken^A' {{p}}
 
 
-weakenV≤r : {n : ℕ} {p : WeakPos n} (v : VarPos n) → weakenV p v ≡ v
+weakenV≤r : {n : ℕ} {p : WeakPos n} (v : VarPos n) → weakenV {{≤r}} p v ≡ v
 weakenV≤r {p = last} last = refl
 weakenV≤r {p = prev p} last = refl
 weakenV≤r {p = last} (prev v) = refl
-weakenV≤r {p = prev p} (prev v) = ap prev (weakenV≤r v)
+weakenV≤r {p = prev p} (prev v) = ap prev (weakenV≤r {p = p} v)
 
 weaken≤r : {Σ : Signature} {k : _} {n : ℕ} {p : WeakPos n} (e : Expr Σ n k) → weaken p e ≡ e
 weakenA≤r : {Σ : Signature} {k : _} {n : ℕ} {p : WeakPos n} (as : Args Σ n k) → weakenA p as ≡ as
 
-weaken≤r (var x) = ap var (weakenV≤r x)
+weaken≤r {p = p} (var x) = ap var (weakenV≤r {p = p} x)
 weaken≤r (sym s x) = ap (sym s) (weakenA≤r x)
 
 weakenA≤r [] = refl
@@ -203,7 +211,7 @@ liftSig : {n m : ℕ} {Σ Σ' : Signature} {{p : n ≤ m}} → (Σ →Sig Σ') n
 ↑Expr ↑ (sym s x) = (↑ $ s) (↑Args ↑ x)
 
 ↑Args ↑ [] = []
-↑Args ↑ (es , e) = ↑Args ↑ es , ↑Expr (liftSig ↑) e
+↑Args ↑ (_,_ {m = m} es e) = ↑Args ↑ es , ↑Expr (liftSig {{≤-+ {_} {m}}} ↑) e
 
 
 {-
@@ -251,30 +259,31 @@ we can map from [Σ] to [Σ'] and that we have terms [as] in [Σ'] to replace th
 [SubstM ↑ as] represents that map.
 -}
 
-Subst1  : {Σ : Signature} {n m : ℕ} {k : SyntaxSort} → Expr Σ (suc n + m) k → TmExpr Σ n → Expr Σ (n + m) k
-Subst1A : {Σ : Signature} {n m : ℕ} {args : SyntaxArityArgs} → Args Σ (suc n + m) args → TmExpr Σ n → Args Σ (n + m) args
+trExpr : {Σ : Signature} {n n' : ℕ} (p : n === n') {k : SyntaxSort} → Expr Σ n k → Expr Σ n' k
+trExpr refl u = u
 
-Subst1 {m = zero} (var last) a = a
-Subst1 {m = zero} (var (prev x)) a = var x
-Subst1 {m = suc m} (var last) a = var last
-Subst1 {m = suc m} (var (prev x)) a = weaken {{≤S ≤r}} last (Subst1 {m = m} (var x) a)
-Subst1 {m = zero} (sym s x) a = sym s (Subst1A x a)
-Subst1 {m = suc m} (sym s x) a = sym s (Subst1A x a)
+trExpr! : {Σ : Signature} {n n' : ℕ} (p : n === n') {k : SyntaxSort} → Expr Σ n' k → Expr Σ n k
+trExpr! refl u = u
 
--- Subst1 last (var last) a = a
--- Subst1 last (var (prev x)) a = var x
--- Subst1 {n = suc n} (prev p) (var last) a = var last
--- Subst1 {n = suc n} (prev p) (var (prev x)) a = weaken last (Subst1 p (var x) a)
--- Subst1 p (sym s x) a = sym s (Subst1A p x a)
+Subst1  : {Σ : Signature} {n : ℕ} (m : ℕ) {k : SyntaxSort} → Expr Σ (suc n + m) k → TmExpr Σ n → Expr Σ (n + m) k
+Subst1A : {Σ : Signature} {n : ℕ} (m : ℕ) {args : SyntaxArityArgs} → Args Σ (suc n + m) args → TmExpr Σ n → Args Σ (n + m) args
 
-Subst1A [] a = []
-Subst1A {n = n} {m} (_,_ {m = k} es e) a = (Subst1A es a , transport {P = λ z → Expr _ z _}  (assoc {n} {m} {k}) ((Subst1 {n = n} {m + k} (transport! {P = λ z → Expr _ z _} (assoc {suc n} {m} {k}) e) a)))
--- Subst1A p (_,_ {m = m} as x) a = (Subst1A p as a , {!!}) -- Subst1 {!(prev^ m p)!} {!!} {!(weaken {{{!TODO!}}} last a)!})
+Subst1 zero (var last) a = a
+Subst1 zero (var (prev x)) a = var x
+Subst1 (suc m) (var last) a = var last
+Subst1 (suc m) (var (prev x)) a = weaken {{≤S ≤r}} last (Subst1 m (var x) a)
+Subst1 zero (sym s x) a = sym s (Subst1A zero x a)
+Subst1 (suc m) (sym s x) a = sym s (Subst1A (suc m) x a)
+
+{-# REWRITE assoc #-}
+
+Subst1A m [] a = []
+Subst1A {n = n} m (_,_ {m = k} es e) a = (Subst1A m es a , Subst1 (m + k) e a)
 
 
 Subst  : {Σ : Signature} {l m : ℕ} {k : SyntaxSort} → Expr Σ (m + l) k → Args Σ m (MArityArgs l) → Expr Σ m k
 Subst {l = zero} e [] = e
-Subst {l = suc l} {m} e (as , a) = Subst (Subst1 {m = zero} e (weaken {{≤-+}} last a)) as
+Subst {l = suc l} {m} e (as , a) = Subst (Subst1 0 e (weaken {{≤-+ {m = l}}} last a)) as
 
 SubstM : {Σ Σ' : Signature} {m : ℕ} {args : SyntaxArityArgs}
       → (Σ →Sig Σ') m
@@ -282,7 +291,7 @@ SubstM : {Σ Σ' : Signature} {m : ℕ} {args : SyntaxArityArgs}
       → ((ExtSig^ Σ args) →Sig Σ') m
 SubstM ↑ [] = ↑
 SubstM ↑ (as , a) $ prev s = SubstM ↑ as $ s
-(SubstM {m = n} ↑ (_,_ {m = l} as a) $ new) bs = Subst (weaken {{≤+ l}} last a) bs
+(_$_ (SubstM {m = n} ↑ (_,_ {m = l} as a)) {{p}} new) bs = Subst (weaken {{≤+ l {{p}}}} last a) bs
 
 {-
 args = ((0, Ty), (1, Ty))
@@ -291,5 +300,4 @@ To get a map from it to Σ', we need
 - a map from Σ to Σ'
 - a type expression in Σ' (for A)
 - a type expression in Σ' in scope (m + 1)  (for B)
-
 -}
