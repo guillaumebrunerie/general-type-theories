@@ -23,7 +23,7 @@ module _ where
   TypingRuleλ = Tm ([] , Ty []
                        , Ty ([] , (sym 0 [] / apr T 0 []))
                        , Tm ([] , (sym 1 [] / apr T 1 []))
-                            (sym 1 ([] ,    sym 0 []) /
+                            (sym   1 ([] ,    sym   0 []) /
                              apr T 1 ([] ,0Tm apr T 0 [])))
                    (sym 3 ([] ,    sym 2 [] ,    sym 1 ([] ,    var last)) /
                     apr T 3 ([] ,0Ty apr T 2 [] ,1Ty apr T 1 ([] ,0Tm apr S (var 0) ([] , apr T 2 []))))

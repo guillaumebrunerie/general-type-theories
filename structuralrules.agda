@@ -8,47 +8,55 @@ open import derivability
 
 module _ (Σ : Signature) where
 
+{-
+
+Γ ⊢ A    (x : A) ∈ Γ
+--------------------
+   Γ ⊢ x : A
+
+-}
+
 -- The version of the variable rule we use is that Γ ⊢ x : A if Γ ⊢ A holds, and if A is the type
 -- corresponding to x in Γ.
-VarRule : (k : ℕ) {n : ℕ} → DerivationRule Σ (([] , (0 , Ty)) , Tm) n
+VarRule : (k : ℕ) → DerivationRule Σ (([] , (0 , Ty)) , Tm)
 rule (VarRule k) ↑ Γ ([] , ◇ ⊢ A) =
   do
     (k' , A') ← get k Γ
     assume (A' ≡ A)
     return (◇ ⊢ var k' :> A)
 
-ConvRule : {n : ℕ} → DerivationRule Σ (([] , (0 , Tm) , (0 , Ty=)) , Tm) n
+ConvRule : DerivationRule Σ (([] , (0 , Tm) , (0 , Ty=)) , Tm)
 rule ConvRule ↑ Γ ([] , ◇ ⊢ u :> A , ◇ ⊢ A' == B) =
   do
     assume (A ≡ A')
     return (◇ ⊢ u :> B)
 
-ConvEqRule : {n : ℕ} → DerivationRule Σ (([] , (0 , Tm=) , (0 , Ty=)) , Tm=) n
+ConvEqRule : DerivationRule Σ (([] , (0 , Tm=) , (0 , Ty=)) , Tm=)
 rule ConvEqRule ↑ Γ ([] , ◇ ⊢ u == v :> A , ◇ ⊢ A' == B) =
   do
     assume (A ≡ A')
     return (◇ ⊢ u == v :> B)
 
-TyReflRule : {n : ℕ} → DerivationRule Σ (([] , (0 , Ty)) , Ty=) n
+TyReflRule : DerivationRule Σ (([] , (0 , Ty)) , Ty=)
 rule TyReflRule ↑ Γ ([] , ◇ ⊢ A) = return (◇ ⊢ A == A)
 
-TySymmRule : {n : ℕ} → DerivationRule Σ (([] , (0 , Ty=)) , Ty=) n
+TySymmRule : DerivationRule Σ (([] , (0 , Ty=)) , Ty=)
 rule TySymmRule ↑ Γ ([] , ◇ ⊢ A == B) = return (◇ ⊢ B == A)
 
-TyTranRule : {n : ℕ} → DerivationRule Σ (([] , (0 , Ty=) , (0 , Ty=)) , Ty=) n
-rule TyTranRule ↑ Γ ([] , ◇ ⊢ A == B , ◇ ⊢ B' == D) =
+TyTranRule : DerivationRule Σ (([] , (0 , Ty=) , (0 , Ty=)) , Ty=)
+rule TyTranRule ↑ Γ ([] , ◇ ⊢ A == B , ◇ ⊢ B' == D) =  -- Can’t use C as a bound variable as it’s a tag.
   do
     assume (B ≡ B')
     return (◇ ⊢ A == D)
 
 
-TmReflRule : {n : ℕ} → DerivationRule Σ (([] , (0 , Tm)) , Tm=) n
+TmReflRule : DerivationRule Σ (([] , (0 , Tm)) , Tm=)
 rule TmReflRule ↑ Γ ([] , ◇ ⊢ u :> A) = return (◇ ⊢ u == u :> A)
 
-TmSymmRule : {n : ℕ} → DerivationRule Σ (([] , (0 , Tm=)) , Tm=) n
+TmSymmRule : DerivationRule Σ (([] , (0 , Tm=)) , Tm=)
 rule TmSymmRule ↑ Γ ([] , ◇ ⊢ u == v :> A) = return (◇ ⊢ v == u :> A)
 
-TmTranRule : {n : ℕ} → DerivationRule Σ (([] , (0 , Tm=) , (0 , Tm=)) , Tm=) n
+TmTranRule : DerivationRule Σ (([] , (0 , Tm=) , (0 , Tm=)) , Tm=)
 rule TmTranRule ↑ Γ ([] , ◇ ⊢ u == v :> A , ◇ ⊢ v' == w :> A') =
   do
     assume (v ≡ v')
@@ -89,7 +97,7 @@ data StructuralRulesType : {ar : JudgmentArity} → Set where
 Rules StructuralRules S ar = StructuralRulesType {ar}
 Rules StructuralRules T ar = Empty
 Rules StructuralRules C ar = Empty
-Rules StructuralRules E ar = Empty
+Rules StructuralRules Eq ar = Empty
 derivationRule StructuralRules {t = S} (var k) = VarRule k
 derivationRule StructuralRules {t = S} conv = ConvRule
 derivationRule StructuralRules {t = S} convEq = ConvEqRule
@@ -99,4 +107,3 @@ derivationRule StructuralRules {t = S} tyTran = TyTranRule
 derivationRule StructuralRules {t = S} tmRefl = TmReflRule
 derivationRule StructuralRules {t = S} tmSymm = TmSymmRule
 derivationRule StructuralRules {t = S} tmTran = TmTranRule
-

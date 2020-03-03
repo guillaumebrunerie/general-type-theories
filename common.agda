@@ -183,30 +183,34 @@ _+_ : ℕ → ℕ → ℕ
 n + zero = n
 n + suc m = suc (n + m)
 
+infixl 20 _+_
+
 instance
   ≤-+ : {n m : ℕ} → n ≤ (n + m)
   ≤-+ {m = zero} = ≤r
   ≤-+ {m = suc m} = ≤S (≤-+ {m = m})
 
+  -- ≤-+S : {m : ℕ} (n : ℕ) → m ≤ (m + suc n)
+  -- ≤-+S _ = ≤S ≤-+
+
 instance
-  ≤S0 : {n : ℕ} → n ≤ suc n
-  ≤S0 = ≤S ≤r
+  -- ≤S0 : {n : ℕ} → n ≤ suc n
+  -- ≤S0 = ≤S ≤r
 
   0≤ : {n : ℕ} → 0 ≤ n
   0≤ {zero} = ≤r
   0≤ {suc n} = ≤S (0≤ {n})
 
 ≤SS : {n m : ℕ} {{_ : n ≤ m}} → suc n ≤ suc m
-≤SS {.0} {zero} ⦃ ≤r ⦄ = ≤r
-≤SS {.(suc m)} {suc m} ⦃ ≤r ⦄ = ≤r
-≤SS {n} {suc m} ⦃ ≤S p ⦄ = ≤S (≤SS {n} {m} {{p}})
+≤SS ⦃ ≤r ⦄ = ≤r
+≤SS ⦃ ≤S p ⦄ = ≤S (≤SS {{p}})
 
 ≤+ : (l : ℕ) {n m : ℕ} {{_ : n ≤ m}} → (n + l) ≤ (m + l)
-≤+ l {{≤r}} = ≤r
-≤+ zero {{ ≤S p }} = ≤S p
-≤+ (suc l) {{ ≤S p }} = ≤SS {{≤+ l {{≤S p}}}}
--- ≤+ zero {{p}} = p
--- ≤+ (suc l) = ≤SS {{≤+ l}}
+-- ≤+ l {{≤r}} = ≤r
+-- ≤+ zero {{ ≤S p }} = ≤S p
+-- ≤+ (suc l) {{ ≤S p }} = ≤SS {{≤+ l {{≤S p}}}}
+≤+ zero {{p}} = p
+≤+ (suc l) = ≤SS {{≤+ l}}
 
 ≤tr : {n m k : ℕ} {{_ : n ≤ m}} {{_ : m ≤ k}} → n ≤ k
 ≤tr ⦃ ≤r ⦄ ⦃ q ⦄ = q
@@ -216,15 +220,20 @@ instance
 
 {- Rewrite rules for the natural numbers (!!!) -}
 
--- +O-rewrite : {n : ℕ} → n + zero ≡ n
--- +O-rewrite {zero} = refl
--- +O-rewrite {suc n} = ap suc +O-rewrite
++O-rewrite : {n : ℕ} → 0 + n ≡ n
++O-rewrite {zero} = refl
++O-rewrite {suc n} = ap suc +O-rewrite
 -- {-# REWRITE +O-rewrite #-}
 
--- +S-rewrite : {n m : ℕ} → m + suc n ≡ suc (m + n)
--- +S-rewrite {m = zero} = refl
--- +S-rewrite {m = suc m} = ap suc +S-rewrite
++S-rewrite : {n m : ℕ} → suc m + n ≡ suc (m + n)
++S-rewrite {zero} = refl
++S-rewrite {suc n} {m} = ap suc (+S-rewrite {n} {m})
 -- {-# REWRITE +S-rewrite #-}
+
+assoc : {n m k : ℕ} → (n + m) + k ≡ n + (m + k)
+assoc {k = zero} = refl
+assoc {n} {m} {k = suc k} = ap suc (assoc {n} {m} {k = k})
+-- {-# REWRITE assoc #-}
 
 data _===_ {l} {A : Set l} (x : A) : A → Set l where
   instance refl : x === x
@@ -232,16 +241,11 @@ data _===_ {l} {A : Set l} (x : A) : A → Set l where
 
 infix 4 _===_
 
-assoc : {n m k : ℕ} → (n + m) + k ≡ n + (m + k)
-assoc {k = zero} = refl
-assoc {n} {m} {k = suc k} = ap suc (assoc {n} {m} {k = k})
---{-# REWRITE assoc #-}
+-- transport : {A : Set} {P : A → Set} {a b : A} → a === b → P a → P b
+-- transport refl u = u
 
-transport : {A : Set} {P : A → Set} {a b : A} → a === b → P a → P b
-transport refl u = u
-
-transport! : {A : Set} {P : A → Set} {a b : A} → a === b → P b → P a
-transport! refl u = u
+-- transport! : {A : Set} {P : A → Set} {a b : A} → a === b → P b → P a
+-- transport! refl u = u
 
 
 {- Instance arguments -}

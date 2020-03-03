@@ -1,6 +1,7 @@
 {-# OPTIONS --rewriting --prop #-}
 
 open import common
+open import common using (_===_)
 open import syntx
 open import derivability
 open import structuralrules

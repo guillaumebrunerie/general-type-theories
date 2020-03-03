@@ -56,9 +56,9 @@ data DerivationRulePremises (Σ : Signature) {n : ℕ} (Γ : Ctx Σ n) : Judgmen
       → Judgment Σ Γ m k
       → DerivationRulePremises Σ Γ (args , (m , k))
 
-record DerivationRule (Σ : Signature) (ar : JudgmentArity) (n : ℕ) : Set₁ where
+record DerivationRule (Σ : Signature) (ar : JudgmentArity) : Set₁ where
   field
-    rule : {Σ' : Signature} → (Σ →Sig Σ') n → (Γ : Ctx Σ' n)
+    rule : {Σ' : Signature} {n : ℕ} → (Σ →Sig Σ') n → (Γ : Ctx Σ' n)
          → DerivationRulePremises Σ' Γ (args ar) → Partial (Judgment Σ' Γ 0 (sort ar))
 open DerivationRule public
 
@@ -70,7 +70,7 @@ data Tag : Set where
 record DerivabilityStructure (Σ : Signature) : Set₁ where
   field
     Rules : Tag → JudgmentArity → Set
-    derivationRule : {t : Tag} {ar : JudgmentArity} (r : Rules t ar) {n : ℕ} → DerivationRule Σ ar n
+    derivationRule : {t : Tag} {ar : JudgmentArity} (r : Rules t ar) → DerivationRule Σ ar
 open DerivabilityStructure public
 
 
@@ -96,9 +96,7 @@ module _ {Σ : Signature} {m : ℕ} {Γ : Ctx Σ m} where
 
 
 {-
-A judgment can be derivable in two different ways:
-- if it has a non-trivial local context, then we just move the local context to the end of the
-  ambient context and try again,
+A judgment can be derivable in one different way:
 - if it has a trivial local context, then it should be obtained by applying a rule [r] from the
   derivability structure to a list of judgments [js] which are all derivable [js-der] and for which
   the rule is defined [def].
@@ -128,7 +126,7 @@ data Derivable {Σ} E where
 
 {- Special cases of [_,_], used to make Agda not blow up -}
 
-_,0Ty_ : ∀ {Σ} {E} {m} {Γ : Ctx Σ m} {A : _}
+_,0Ty_ : ∀ {Σ} {E} {m} {Γ : Ctx Σ m} {A : TyExpr Σ m}
         {ar : JudgmentArityArgs} {js : DerivationRulePremises Σ Γ ar}
         → DerivableArgs E js
         → Derivable E (◇ ⊢ A)
