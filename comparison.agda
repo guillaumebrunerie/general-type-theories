@@ -78,81 +78,6 @@ T→NJ (Γ ⊢ u :> A) = njudgment (T→NCtx Γ) (◇ ⊢ T→N u :> T→N A)
 T→NJ (Γ ⊢ A == B) = njudgment (T→NCtx Γ) (◇ ⊢ T→N A == T→N B)
 T→NJ (Γ ⊢ u == v :> A) = njudgment (T→NCtx Γ) (◇ ⊢ T→N u == T→N v :> T→N A)
 
-prev^ : {n : ℕ} (m : ℕ) → WeakPos (n + m)
-prev^ zero = last
-prev^ {n} (suc m) = prev (prev^ {n} m)
-
--- ap= : {A B : Set} (f : A → B) {a b : A} → a === b → f a === f b
--- ap= f refl = refl
-
--- rew : {k : ℕ} (n m : ℕ) → weakenWeakPos2 (prev^ {k} m) ≡ prev^ {k} (m + n)
--- rew zero m = refl
--- rew (suc n) m = ap prev (rew n m)
-
--- Subst1-weakenV : {Σ : Signature} {n m : ℕ} {p : (n + m) ≤ (suc n + m)} (x : VarPos (n + m)) {f : N.TmExpr Σ n} → Subst1 m (var (N.weakenV {{p}} (prev^ {n} m) x)) f ≡ var x
--- Subst1-weakenV {m = zero} {≤S ≤r} x = refl
--- Subst1-weakenV {m = zero} {≤S (≤S p)} x = {!!}
--- --Subst1-weakenV {m = zero} {≤S (≤S p)} x = {!p absurd!}
--- Subst1-weakenV {m = suc m} last = refl
--- Subst1-weakenV {m = suc m} (prev x) = ap (N.weaken last) (Subst1-weakenV {m = m} x)
-
--- Subst1-weaken  : {Σ : Signature} {n m : ℕ} {k : SyntaxSort} {{p : {!!}}} (e : N.Expr Σ (n + m) k) {f : N.TmExpr Σ n} → Subst1 m (N.weaken {{p}} (prev^ {n} m) e) f ≡ e
--- Subst1-weakenA : {Σ : Signature} {n m : ℕ} {ar : SyntaxArityArgs} (es : N.Args Σ (n + m) ar) {f : N.TmExpr Σ n} → Subst1A m (N.weakenA {{≤+ m {{≤S ≤r}}}} (prev^ {n} m) es) f ≡ es
-
-
-
--- Subst1-weaken {n = n} {m} (var x) = Subst1-weakenV {n = n} {m} x
--- Subst1-weaken {m = zero} (sym s x) = ap (sym s) (Subst1-weakenA x)
--- Subst1-weaken {m = suc m} (sym s x) = ap (sym s) (Subst1-weakenA x)
-
--- Subst1V-weaken-varlast : {Σ : Signature} {n : ℕ} (x : VarPos (suc n)) → Subst1 {Σ} 0 (var (N.weakenV {{≤S ≤r}} (prev last) x)) (var last) ≡ var x
--- Subst1V-weaken-varlast last = refl
--- Subst1V-weaken-varlast (prev x) = refl
-
--- Subst1-weaken-varlast : {Σ : Signature} {n : ℕ} {k : SyntaxSort} (e : N.Expr Σ (suc n) k) → Subst1 0 (N.weaken {{≤S ≤r}} (prev last) e) (var last) ≡ e
--- Subst1A-weaken-varlast : {Σ : Signature} {n : ℕ} {ar : SyntaxArityArgs} (es : N.Args Σ (suc n) ar) → Subst1A 0 (N.weakenA {{≤S ≤r}} (prev last) es) (var last) ≡ es
-
--- Subst1-weaken-varlast (var x) = Subst1V-weaken-varlast x
--- Subst1-weaken-varlast (sym s es) = ap (sym s) (Subst1A-weaken-varlast es)
-
--- lemmaa : {Σ : Signature} {k : SyntaxSort} (x : N.Expr Σ (suc n + m) k) → tr! (assoc {suc n} {0} {m}) (Subst1 (0 + m) (tr (assoc {suc (suc n)} {0} {m}) (N.weaken ⦃ ≤+ m {suc n} {suc (suc n)} ⦄ (weakenWeakPos2 {{≤-+ {suc n} {m}}} (prev last)) x)) (var last)) ≡ x
--- lemmaA : {Σ : Signature} {args : SyntaxArityArgs} (x : N.Args Σ (suc n + m) args) → trA (! (assoc {suc n} {0} {m})) (Subst1A (0 + m) (trA (assoc {suc (suc n)} {0} {m}) (N.weakenA ⦃ ≤+ m {suc n} {suc (suc n)} ⦄ (weakenWeakPos2 {{≤-+ {suc n} {m}}} (prev last)) x)) (var last)) ≡ x
-
--- lemmaa (var x) = {!!}
--- lemmaa (sym s x) = ap (sym s) {!!}
-
--- lemmaA [] = refl
--- lemmaA (xs , x) = ap2 _,_ (lemmaA xs) {!lemmaa x!}
-
--- Subst1A-weaken-varlast [] = refl
--- Subst1A-weaken-varlast (es , x) = ap2 _,_ (Subst1A-weaken-varlast es) (lemmaa x)
-
---≤+-assoc : (n + m) + k
-
--- Subst1-weakenA [] = refl
--- Subst1-weakenA {n = n} {m} (_,_ {m = k} es e) {f} = ap2 _,_ (Subst1-weakenA es) (ap (λ x → Subst1 (m + k) (N.weaken {{{!!}}} x e) f) (rew k m) ∙ Subst1-weaken {m = m + k} e {f})
-
--- Subst1-weakenV : {Σ : Signature} {n : ℕ} {p : _} (x : VarPos (suc n)) {f : N.Expr Σ (suc n) Tm} → Subst1 0 (var (N.weakenVL {{p}} x)) f ≡ var x
--- Subst1-weakenV {p = ≤S ≤r} x = refl
--- Subst1-weakenV {p = ≤S (≤S p)} x = {!p absurd!}
-
--- Subst1-weaken : {Σ : Signature} {n : ℕ} {k : SyntaxSort} {p : _} (e : N.Expr Σ (suc n) k) {f : N.Expr Σ (suc n) Tm} → Subst1 0 (N.weaken {{p}} last e) f ≡ e
--- Subst1-weakenA : {Σ : Signature} {n : ℕ} {args : SyntaxArityArgs} {p : _} (es : N.Args Σ (suc n) args) {f : N.Expr Σ (suc n) Tm} → Subst1A 0 (N.weakenA {{p}} last es) f ≡ es
-
--- Subst1-weaken {p = p} (var x) {f = f} = Subst1-weakenV {p = p} x {f = f}
--- Subst1-weaken (sym s x) = ap (sym s) (Subst1-weakenA x)
-
--- Subst1-weakenA [] = refl
--- Subst1-weakenA (es , x) = ap2 _,_ (Subst1-weakenA es) {!!}
-
--- postulate
---  Subst1-varlast' : {Σ : Signature} {n l : ℕ} (m : ℕ) {k : SyntaxSort} {p : _} (e : N.Expr Σ (suc (suc n) + m) k) → Subst1 m (N.weaken {{p}} last e) (var (last {l})) ≡ N.weaken {{{!≤S ≤r!}}} last (Subst1 m e (var last))
---  Subst1-varlast' : {Σ : Signature} {n m : ℕ} {k : SyntaxSort} {p : _} (e : N.Expr Σ {!m!} k) → Subst1 0 (N.weaken {{p}} last e) (var (last {{!m!}})) ≡ e
--- Subst1-varlast zero (var x) = {!!}
--- Subst1-varlast (suc m) (var last) = {!!}
--- Subst1-varlast (suc m) (var (prev x)) = {!!}
--- Subst1-varlast zero (sym s x) = ap (sym s) {!!}
--- Subst1-varlast (suc m) (sym s x) = ap (sym s) {!!}
 
 weakenV-comm : {n : ℕ} (p : WeakPos n) (x : VarPos n) → N.weakenV p x ≡ T.weakenV p x
 weakenV-comm last x = refl
@@ -167,6 +92,7 @@ weaken-comm {A = var x} p = ap var (weakenV-comm p x)
 weaken-comm {A = lam A B u} p = ap3 (λ z z' z'' → sym (prev (prev (prev new))) ([] , z , z' , z'')) (weaken-comm p) (weaken-comm (prev p)) (weaken-comm (prev p))
 weaken-comm {A = app A B f a} p = ap4 (λ z z' z'' z''' → sym (prev (prev new)) ([] , z , z' , z'' , z''')) (weaken-comm p) (weaken-comm (prev p)) (weaken-comm p) (weaken-comm p)
 
+
 VarPos→ℕ : {n : ℕ} → VarPos n → ℕ
 VarPos→ℕ last = 0
 VarPos→ℕ (prev k) = suc (VarPos→ℕ k)
@@ -179,81 +105,113 @@ snd-VarPos→ℕ : {n : ℕ} (k : VarPos n) (Γ : T.Ctx n) {def : _} → snd (N.
 snd-VarPos→ℕ last (Γ , A) = weaken-comm last
 snd-VarPos→ℕ (prev k) (Γ , A) = ap (N.weaken last) (snd-VarPos→ℕ k Γ) ∙ weaken-comm last
 
-lemma' : {l : ListProp} {p : pf l → ListProp} → ΣP (pf l) (λ x → pf (p x)) → pf (l , p)
-lemma' {[]} (p , q) = q
-lemma' {[ x ]} (p , q) = p , q
-lemma' {l , x} (p , q) = p , q
+get-def : {n : ℕ} (k : VarPos n) (Γ : T.Ctx n) → isDefined (N.get (VarPos→ℕ k) (T→NCtx Γ))
+get-def last (Γ , A) = tt
+get-def (prev k) (Γ , A) = (get-def k Γ , tt)
 
-lemmax : {n : ℕ} (k : VarPos n) (Γ : T.Ctx n)
-         → pf (listIsDefined (N.get (VarPos→ℕ k) (T→NCtx Γ)) ,
-            (λ x → [ snd (N.get (VarPos→ℕ k) (T→NCtx Γ) $ x) ≡ T→N (T.get k Γ) ] ,
-                   (λ x₁ → [])))
-lemmax last (Γ , A) = weaken-comm last , tt
-lemmax (prev k) (Γ , A) = lemma' {l = listIsDefined (N.get (VarPos→ℕ k) (T→NCtx Γ))} (fst (lemma {l = listIsDefined (N.get (VarPos→ℕ k) (T→NCtx Γ))} (lemmax k Γ)) , tt) , ((ap (N.weaken last) (snd-VarPos→ℕ k Γ) ∙ weaken-comm last) , tt)
 
-Mor-insert : {Σ : Signature} (x : WeakPos m) (δ : N.Mor Σ n m) (u : N.TmExpr Σ n) → N.Mor Σ n (suc m)
-Mor-insert last δ u = (δ , u)
-Mor-insert (prev x) (δ , v) u = (Mor-insert x δ u , v)
-
-Mor-remove : {Σ : Signature} (x : VarPos m) (δ : N.Mor Σ n m) → N.Mor Σ n (pred m)
-Mor-remove last (δ , u) = δ
-Mor-remove {m = suc (suc m)} (prev x) (δ , u) = (Mor-remove x δ , u)
-
-thing : WeakPos n → VarPos (suc n)
-thing last = last
-thing (prev x) = prev (thing x)
-
-Subst-insert2 : {k : SyntaxSort} {n : ℕ} {B : N.Expr Σ n k} {x : WeakPos n} {δ : N.Mor Σ m (suc n)} → SubstMor (N.weaken x B) δ ≡ SubstMor B (Mor-remove (thing x) δ)
-SubstA-insert2 : {args : SyntaxArityArgs} {n : ℕ} {Bs : N.Args Σ n args} {x : WeakPos n} {δ : N.Mor Σ m (suc n)} → SubstAMor (N.weakenA x Bs) δ ≡ SubstAMor Bs (Mor-remove (thing x) δ)
-
-Subst-insert2 {B = var x} = {!!}
-Subst-insert2 {B = sym s x} = ap (sym s) SubstA-insert2
-
-SubstA-insert2 {Bs = []} = refl
-SubstA-insert2 {Bs = Bs , v} {x = x} {δ = δ} = ap2 _,_ SubstA-insert2 {!Subst-insert2 {B = v} {x = weakenWeakPos2 {{?}} x} {δ = N.weakenMor+ δ} ∙ ?!}
-
-thingx : {Σ : Signature} {m : ℕ} {n k : ℕ} {x : WeakPos n} {δ : N.Mor Σ k n} {u : N.TmExpr Σ k} → N.Mor Σ (k + m) (suc (n + m))
-thingx {Σ} {m} {n} {k} {x} {δ} {u} = Mor-insert (weakenWeakPos2 x) (N.weakenMor+ m δ) (N.weakenL u)
+MorInsert : {Σ : Signature} (x : WeakPos m) (δ : N.Mor Σ n m) (u : N.TmExpr Σ n) → N.Mor Σ n (suc m)
+MorInsert last δ u = (δ , u)
+MorInsert (prev x) (δ , v) u = (MorInsert x δ u , v)
 
 {-# REWRITE +O-rewrite #-}
 {-# REWRITE +S-rewrite #-}
 {-# REWRITE assoc #-}
 
-lm : {Σ : Signature} {m : ℕ} {n k : ℕ} {x : WeakPos n} {δ : N.Mor Σ k n} {u : N.TmExpr Σ k} {δ' : N.Mor Σ (k + m) (n + m)} → N.weakenMor+ m δ ≡ δ' → N.weakenMor+ m (Mor-insert x δ u) ≡ Mor-insert (weakenWeakPos2 x) δ' (N.weaken last u)
-lm refl = {!w!}
+weaken-MorInsert : {Σ : Signature} {n k : ℕ} {x : WeakPos n} {δ : N.Mor Σ k n} {u : N.TmExpr Σ k} → N.weakenMor (MorInsert x δ u) ≡ MorInsert x (N.weakenMor δ) (N.weaken last u)
+weaken-MorInsert {x = last} = refl
+weaken-MorInsert {x = prev x} {δ , u} = ap2 _,_ weaken-MorInsert refl
+
+weakenVL-η : (y : VarPos n) {p : _} → y ≡ N.weakenVL {{p}} y
+weakenVL-η y {≤r} = refl
+weakenVL-η y {≤S p} = {!Impossible!}
+
+weakenV-η : (x : WeakPos n) (y : VarPos n) {p : _} → y ≡ N.weakenV {{p}} x y
+weakenV-η last y = weakenVL-η y
+weakenV-η (prev x) last = refl
+weakenV-η (prev x) (prev y) = ap prev (weakenV-η x y)
+
+weaken-η  : {Σ : Signature} {k : _} {x : _} {p : _} {u : N.Expr Σ n k} → u ≡ N.weaken {{p}} x u
+weakenA-η : {Σ : Signature} {k : _} {x : _} {p : _} {u : N.Args Σ n k} → u ≡ N.weakenA {{p}} x u
+
+weaken-η {x = x} {u = var y} = ap var (weakenV-η x y)
+weaken-η {u = sym s us} = ap (sym s) weakenA-η
+
+weakenA-η {u = []} = refl
+weakenA-η {u = u , x} = ap2 _,_ weakenA-η weaken-η
+
+
+weaken-μ  : {Σ : Signature} {k : _} {x : _} {q : n ≤ m} {r : _} {u : N.Expr Σ n k} → N.weaken  {{≤S ≤r}} {!!} (N.weaken  {{q}} x u) ≡ N.weaken  {{r}} x u
+weakenA-μ : {Σ : Signature} {k : _} {x : _} {q : n ≤ m} {r : _} {u : N.Args Σ n k} → N.weakenA {{≤S ≤r}} {!!} (N.weakenA {{q}} x u) ≡ N.weakenA {{r}} x u
+
+weaken-μ {u = var x} = {!!}
+weaken-μ {u = sym s x} = ap (sym s) weakenA-μ
+
+weakenA-μ {u = []} = refl
+weakenA-μ {u = u , x} = ap2 _,_ weakenA-μ {!weaken-μ!}
+
+
+
+weaken+-MorInsert : {Σ : Signature} (m : ℕ) {n k : ℕ} {x : WeakPos n} {δ : N.Mor Σ k n} {u : N.TmExpr Σ k} {δ' : N.Mor Σ (k + m) (n + m)}
+                  → N.weakenMor+ m δ ≡ δ' → N.weakenMor+ m (MorInsert x δ u) ≡ MorInsert (weakenWeakPos2 x) δ' (N.weaken last u)
+weaken+-MorInsert zero refl = ap (MorInsert _ _) weaken-η
+weaken+-MorInsert (suc m) refl = ap2 _,_ (ap N.weakenMor (weaken+-MorInsert m refl) ∙ weaken-MorInsert ∙ ap (MorInsert _ _) {!!}) refl
 
 idMor+= : {Σ : Signature} (m : ℕ) → N.weakenMor+ {Σ} m {n = n} idMor ≡ idMor
 idMor+= zero = refl
 idMor+= (suc m) = ap2 _,_ (ap N.weakenMor (idMor+= m)) refl
 
-SubstV-insert : {n : ℕ} {y : VarPos (suc n)} {x : WeakPos (suc n)} {u : N.TmExpr Σ (suc n)} {p : _} → SubstMor (var (N.weakenV {{p}} x y)) (Mor-insert x idMor u) ≡ var y
-SubstV-insert {y = last} {x = last} {p = ≤S ≤r} = refl
-SubstV-insert {y = prev y} {x = last} {p = ≤S ≤r} = {!!}
+SubstVL-insert : (y : VarPos (suc n)) → SubstMor {Σ = Σ} (var y) idMor ≡ var y
+SubstVL-insert last = refl
+SubstVL-insert (prev y) = {!!}
+
+SubstV-insert : {n : ℕ} {y : VarPos (suc n)} {x : WeakPos (suc n)} {u : N.TmExpr Σ (suc n)} {p : _} → SubstMor (var (N.weakenV {{p}} x y)) (MorInsert x idMor u) ≡ var y
+SubstV-insert {y = y} {x = last} {p = ≤S ≤r} = SubstVL-insert y
 SubstV-insert {x = last} {p = ≤S (≤S p)} = {!impossible!}
 SubstV-insert {y = last} {x = prev x} = refl
-SubstV-insert {y = prev y} {x = prev x} = {!!}
+SubstV-insert {y = prev y} {x = prev x} = {!SubstV-insert!}
 
-Subst-insert  : {k : SyntaxSort} {n : ℕ} {e : N.Expr Σ (suc n) k} {x : WeakPos (suc n)} {u : N.TmExpr Σ (suc n)} {p : _} → SubstMor (N.weaken {{p}} x e) (Mor-insert x idMor u) ≡ e
-SubstA-insert : {args : SyntaxArityArgs} {n : ℕ} {es : N.Args Σ (suc n) args} {x : WeakPos (suc n)} {u : N.TmExpr Σ (suc n)} {p : _} → SubstAMor (N.weakenA {{p}} x es) (Mor-insert x idMor u) ≡ es
+Subst-insert  : {k : SyntaxSort} {n : ℕ} {e : N.Expr Σ (suc n) k} {x : WeakPos (suc n)} {u : N.TmExpr Σ (suc n)} {p : _} → SubstMor (N.weaken {{p}} x e) (MorInsert x idMor u) ≡ e
+SubstA-insert : {args : SyntaxArityArgs} {n : ℕ} {es : N.Args Σ (suc n) args} {x : WeakPos (suc n)} {u : N.TmExpr Σ (suc n)} {p : _} → SubstAMor (N.weakenA {{p}} x es) (MorInsert x idMor u) ≡ es
 
 Subst-insert {e = var x} {x = x'} = SubstV-insert {x = x'}
 Subst-insert {e = sym s x} = ap (sym s) SubstA-insert
 
 SubstA-insert {es = []} = refl
 SubstA-insert {args} {n} {es = _,_ {m = m} es e} {x = x} {u = u} {p = p} =
-  ap2 _,_ SubstA-insert (ap (SubstMor (N.weaken {{≤+ m {suc n} {suc (suc n)} {{p}}}} (weakenWeakPos2 x) e)) (lm {m = m} {n = suc n} {k = suc n} {x = x} {u = u} (idMor+= m)) ∙ Subst-insert {e = e} {x = weakenWeakPos2 x})
+  ap2 _,_ SubstA-insert (ap (SubstMor (N.weaken {{≤+ m {suc n} {suc (suc n)} {{p}}}} (weakenWeakPos2 x) e)) (weaken+-MorInsert m (idMor+= m)) ∙ Subst-insert {e = e} {x = weakenWeakPos2 x})
 
--- Subst-insert  : {k : SyntaxSort} {n : ℕ} {B : N.Expr Σ (suc n) k} → SubstMor (N.weaken (prev last) B) ((N.weakenMor idMor , var last) , var last) ≡ B
--- -- SubstA-insert : {args : SyntaxArityArgs} {n : ℕ} {Bs : N.Args Σ (suc n) args} → SubstAMor (N.weakenA (prev last) Bs) ((N.weakenMor idMor , var last) , var last) ≡ Bs
 
--- Subst-insert = Subst-insertx
--- -- Subst-insert {B = sym s x} = ap (sym s) SubstA-insert
 
--- SubstA-insert {Bs = []} = refl
--- SubstA-insert {Bs = Bs , x} = ap2 _,_ SubstA-insert {!Subst-insert {B = x}!}
+T→NMor : T.Mor 0 n m → N.Mor Σ n m
+T→NMor ◇ = ◇
+T→NMor (δ , u) = (T→NMor δ , T→N u)
+
+weakenMor-comm : {δ : T.Mor 0 n m} → N.weakenMor (T→NMor δ) ≡ T→NMor (T.weakenMor δ)
+weakenMor-comm {δ = ◇} = refl
+weakenMor-comm {δ = δ , u} = ap2 _,_ weakenMor-comm (weaken-comm last)
+
+substV-lemma : (x : VarPos n) {δ : T.Mor 0 m n} → SubstMor (var x) (T→NMor δ) ≡ T→N (var x [ δ ])
+substV-lemma last {δ , u} = refl
+substV-lemma (prev x) {δ , u} = substV-lemma x
+
+
+subst-lemma : {k : _} (B : T.Expr k n) {δ : T.Mor 0 m n} → SubstMor (T→N B) (T→NMor δ) ≡ T→N (B [ δ ])
+subst-lemma uu = refl
+subst-lemma (el v) = ap (λ z → sym new ([] , z)) (subst-lemma v)
+subst-lemma (pi A B) = ap2 (λ z z' → sym (prev (prev (prev (prev new)))) ([] , z , z')) (subst-lemma A) (ap (SubstMor (T→N B)) (ap2 _,_ weakenMor-comm refl) ∙ subst-lemma B)
+subst-lemma (var x) = substV-lemma x
+subst-lemma (lam A B u) = ap3 (λ z z' z'' → sym (prev (prev (prev new))) ([] , z , z' , z''))
+                            (subst-lemma A) (ap (SubstMor (T→N B)) (ap2 _,_ weakenMor-comm refl) ∙ subst-lemma B) (ap (SubstMor (T→N u)) (ap2 _,_ weakenMor-comm refl) ∙ subst-lemma u)
+subst-lemma (app A B f a) = ap4
+                              (λ z z' z'' z''' →
+                                 sym (prev (prev new)) ([] , z , z' , z'' , z'''))
+                              (subst-lemma A) (ap (SubstMor (T→N B)) (ap2 _,_ weakenMor-comm refl) ∙ subst-lemma B) (subst-lemma f) (subst-lemma a)
+
+
 
 T→NDer : {j : T.Judgment} → T.Derivable j → NDerivable (T→NJ j)
-T→NDer (Var {Γ = Γ} k dA) = NDerivable=! (ap (λ x → njudgment (T→NCtx Γ) (◇ ⊢ var x :> T→N (T.get k Γ))) (fst-VarPos→ℕ k (T→NCtx Γ))) (apr S (var (VarPos→ℕ k)) ([] ,0Ty T→NDer dA) {{lemmax k Γ}})
+T→NDer (Var {Γ = Γ} k dA) = NDerivable=! (ap (λ x → njudgment (T→NCtx Γ) (◇ ⊢ var x :> T→N (T.get k Γ))) (fst-VarPos→ℕ k (T→NCtx Γ))) (apr S (var (VarPos→ℕ k)) ([] ,0Ty T→NDer dA) {{get-def k Γ , (snd-VarPos→ℕ k Γ , tt)}})
 T→NDer (TyRefl dA) = apr S tyRefl ([] , T→NDer dA)
 T→NDer (TySymm dA=) = apr S tySymm ([] , T→NDer dA=)
 T→NDer (TyTran dA= dB=) = apr S tyTran ([] , T→NDer dA= , T→NDer dB=)
@@ -279,7 +237,7 @@ T→NDer (LamCong dA= dB= du=) =
                    Subst-insert)
     (apr C 3 ([] ,0Ty= T→NDer dA= ,1Ty= T→NDer dB= ,1Tm= NDerivable= (ap (λ z → njudgment _ (◇ ⊢ T→N _ == T→N _ :> z)) Subst-insert) (T→NDer du=)))
 T→NDer (App {A = A} {B} {f} {a} dA dB df da) =
-  NDerivable=! (ap (λ z → njudgment _ (◇ ⊢ sym (prev (prev new)) ([] , T→N A , T→N B , T→N f , T→N a) :> z)) {!TODO!})
+  NDerivable=! (ap (λ z → njudgment _ (◇ ⊢ sym (prev (prev new)) ([] , T→N A , T→N B , T→N f , T→N a) :> z)) {!subst-lemma!})
     (apr T 2 ([] ,0Ty T→NDer dA
                  ,1Ty T→NDer dB
                  ,0Tm NDerivable= (ap (λ z → njudgment _ (◇ ⊢ T→N f :> sym (prev (prev (prev (prev new)))) ([] , T→N A , z))) Subst-insert) (T→NDer df)
@@ -298,11 +256,21 @@ N→TCtx : {n : ℕ} → N.Ctx Σ n → T.Ctx n
 N→TCtx ◇ = ◇
 N→TCtx (Γ , A) = (N→TCtx Γ , N→T A)
 
+weaken-comm' : {k : SyntaxSort} {n : ℕ} {A : N.Expr Σ n k} (p : WeakPos n) → N→T (N.weaken p A) ≡ T.weaken p (N→T A)
+weaken-comm' p = ap N→T (ap (N.weaken p) (! (TNT _))) ∙ ap N→T (weaken-comm p) ∙ NTN _
+
+get-eq : {n : ℕ} (k : ℕ) (Γ : N.Ctx Σ n) {def : _} → N→T (snd (N.get k Γ $ def)) ≡ T.get (fst (N.get k Γ $ def)) (N→TCtx Γ)
+get-eq zero (Γ , A) = weaken-comm' last
+get-eq (suc k) (Γ , A) = weaken-comm' last ∙ ap (T.weaken last) (get-eq k Γ)
+
 N→TJ : NJudgment → T.Judgment
 N→TJ (njudgment Γ (◇ ⊢ A)) = N→TCtx Γ ⊢ N→T A
 N→TJ (njudgment Γ (◇ ⊢ u :> A)) = N→TCtx Γ ⊢ N→T u :> N→T A
 N→TJ (njudgment Γ (◇ ⊢ A == B)) = N→TCtx Γ ⊢ N→T A == N→T B
 N→TJ (njudgment Γ (◇ ⊢ u == v :> A)) = N→TCtx Γ ⊢ N→T u == N→T v :> N→T A
+
+congTy : {Γ : T.Ctx n} {A A' : T.TyExpr n} → A ≡ A' → T.Derivable (Γ ⊢ A) → T.Derivable (Γ ⊢ A')
+congTy refl d = d
 
 congTmTy : {Γ : T.Ctx n} {u : T.TmExpr n} {A A' : T.TyExpr n} → A ≡ A' → T.Derivable (Γ ⊢ u :> A) → T.Derivable (Γ ⊢ u :> A')
 congTmTy refl d = d
@@ -317,7 +285,8 @@ congTmEqTy! : {Γ : T.Ctx n} {u u' : T.TmExpr n} {A A' : T.TyExpr n} → A' ≡ 
 congTmEqTy! refl d = d
 
 N→TDer : {j : NJudgment} → NDerivable j → T.Derivable (N→TJ j)
-N→TDer {njudgment Γ _} (apr S (var k) {js = [] , ◇ ⊢ A} ([] , dA) {{def}}) = {!def!}
+-- N→TDer {njudgment Γ _} (apr Eq x js-der) = {!!}
+N→TDer {njudgment Γ _} (apr S (var k) {js = [] , ◇ ⊢ A} ([] , dA) {{xᵈ , (refl , tt)}}) = congTmTy! (get-eq k Γ) (Var (fst (N.get k Γ $ xᵈ)) (congTy (get-eq k Γ) (N→TDer dA)))
 N→TDer {njudgment Γ _} (apr S conv {js = [] , ◇ ⊢ u :> A , ◇ ⊢ A == B} ([] , du , dA=) {{refl , tt}}) = Conv (N→TDer du) (N→TDer dA=)
 N→TDer {njudgment Γ _} (apr S convEq {js = [] , ◇ ⊢ u == v :> A , ◇ ⊢ A == B} ([] , du= , dA=) {{refl , tt}}) = ConvEq (N→TDer du=) (N→TDer dA=)
 N→TDer {njudgment Γ _} (apr S tyRefl {js = [] , ◇ ⊢ A} ([] , dA)) = TyRefl (N→TDer dA)
@@ -326,17 +295,17 @@ N→TDer {njudgment Γ _} (apr S tyTran {js = [] , ◇ ⊢ A == B , ◇ ⊢ B ==
 N→TDer {njudgment Γ _} (apr S tmRefl {js = [] , ◇ ⊢ u :> A} ([] , du)) = TmRefl (N→TDer du)
 N→TDer {njudgment Γ _} (apr S tmSymm {js = [] , ◇ ⊢ u == v :> A} ([] , du=)) = TmSymm (N→TDer du=)
 N→TDer {njudgment Γ _} (apr S tmTran {js = [] , ◇ ⊢ u == v :> A , ◇ ⊢ v == w :> A} ([] , du= , dv=) {{refl , (refl , tt)}}) = TmTran (N→TDer du=) (N→TDer dv=)
-N→TDer {njudgment Γ _} (apr T typingrule {js = [] , (◇ ⊢ v :> _)} ([] , dv) {{(tt , (refl , tt)) , tt }}) = El (N→TDer dv)
+N→TDer {njudgment Γ _} (apr T typingrule {js = [] , (◇ ⊢ v :> _)} ([] , dv) {{(tt , (tt , (refl , tt))) , tt }}) = El (N→TDer dv)
 N→TDer {njudgment Γ _} (apr T (prev typingrule) []) = UU
 --N→TDer {njudgment Γ _} (apr T (prev (prev typingrule)) {js = [] , ◇ ⊢ A , (◇ , _) ⊢ B , (◇ ⊢ f :> _) , (◇ ⊢ a :> _)} ([] , dA , dB , df , da)
 --                            {{(((((tt , tt) , ((tt , refl) , tt)) , (tt , (refl , tt))) , (tt , (refl , tt))) , tt)}}) = {!N→TDer df --cong --App (N→TDer dA) (N→TDer dB) {!(N→TDer df)!} (N→TDer da)!}
 -- N→TDer {njudgment Γ _} (apr T (prev (prev (prev typingrule))) {js = [] , ◇ ⊢ A , ((◇ , A) ⊢ B) , ((◇ , A) ⊢ u :> B)} ([] , dA , dB , du) {{(((tt , tt) , ((tt , refl) , tt)) , ((tt , refl) , (refl , tt)) ) , tt}})
 --   = congTmTy! (ap (pi (N→T A)) (ap N→T Subst-insert)) (Lam (N→TDer dA) (N→TDer dB) (congTmTy (ap N→T Subst-insert) (N→TDer du)))
-N→TDer {njudgment Γ _} (apr T (prev (prev (prev (prev typingrule)))) {js = [] , ◇ ⊢ A , (◇ , ._) ⊢ B} ([] , dA , dB) {{((tt , tt) , ((tt , refl) , tt)) , tt}}) = Pi (N→TDer dA) (N→TDer dB)
-N→TDer {njudgment Γ _} (apr C congruencerule {js = [] , ◇ ⊢ v == v' :> _} ([] , dv=) {{((tt , (refl , tt)) , tt)}}) = ElCong (N→TDer dv=)
+N→TDer {njudgment Γ _} (apr T (prev (prev (prev (prev typingrule)))) {js = [] , ◇ ⊢ A , (◇ , ._) ⊢ B} ([] , dA , dB) {{((tt , (tt , tt)) , ((tt , refl) , tt)) , tt}}) = Pi (N→TDer dA) (N→TDer dB)
+N→TDer {njudgment Γ _} (apr C congruencerule {js = [] , ◇ ⊢ v == v' :> _} ([] , dv=) {{((tt , (tt , (refl , tt))) , tt)}}) = ElCong (N→TDer dv=)
 N→TDer {njudgment Γ _} (apr C (prev congruencerule) []) = UUCong
 N→TDer {njudgment Γ _} (apr C (prev (prev congruencerule)) js-der) = {!AppCong!}
-N→TDer {njudgment Γ _} (apr C (prev (prev (prev congruencerule))) {js = [] , ◇ ⊢ A == A' , ((◇ , A) ⊢ B == B') , ((◇ , A) ⊢ u == u' :> B'')} ([] , dA= , dB= , du=) {{(((tt , tt) , ((tt , refl) , tt)) , ((tt , refl) , (refl , tt)) ) , tt}}) = congTmEqTy! (ap (pi (N→T A)) (ap N→T Subst-insert)) (LamCong (N→TDer dA=) (N→TDer dB=) (congTmEqTy (ap N→T Subst-insert) (N→TDer du=)))
-N→TDer {njudgment Γ _} (apr C (prev (prev (prev (prev congruencerule)))) {js = [] , ◇ ⊢ A == A' , (◇ , ._) ⊢ B == B'} ([] , dA= , dB=) {{(((tt , tt) , ((tt , refl) , tt)) , tt)}}) = PiCong (N→TDer dA=) (N→TDer dB=)
+--N→TDer {njudgment Γ _} (apr C (prev (prev (prev congruencerule))) {js = [] , ◇ ⊢ A == A' , ((◇ , A) ⊢ B == B') , ((◇ , A) ⊢ u == u' :> B'')} ([] , dA= , dB= , du=) {{(((tt , (tt , tt)) , ((tt , refl) , tt)) , ((tt , refl) , (refl , tt)) ) , tt}}) = congTmEqTy! (ap (pi (N→T A)) (ap N→T Subst-insert)) (LamCong (N→TDer dA=) (N→TDer dB=) (congTmEqTy (ap N→T Subst-insert) (N→TDer du=)))
+N→TDer {njudgment Γ _} (apr C (prev (prev (prev (prev congruencerule)))) {js = [] , ◇ ⊢ A == A' , (◇ , ._) ⊢ B == B'} ([] , dA= , dB=) {{(((tt , (tt , tt)) , ((tt , refl) , tt)) , tt)}}) = PiCong (N→TDer dA=) (N→TDer dB=)
 N→TDer {njudgment Γ _} (apr Eq equalityrule js-der) = {!Eta!}
 N→TDer {njudgment Γ _} (apr Eq (prev equalityrule) js-der) = {!Beta!}

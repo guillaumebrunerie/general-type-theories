@@ -1,6 +1,6 @@
 {-# OPTIONS --rewriting --prop #-}
 
-open import common hiding ([_]; _===_)
+open import common hiding (_===_)
 
 {- Syntax of term- and type-expressions, using de Bruijn indices -}
 
