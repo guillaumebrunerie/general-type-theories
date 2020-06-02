@@ -63,17 +63,31 @@ TyExpr Σ n = Expr Σ n Ty
 TmExpr : (Σ : Signature) → ℕ → Set
 TmExpr Σ n = Expr Σ n Tm
 
-{- Weakening by a group of variable in the middle of a context -}
-
-weakenVL : {n m : ℕ} {{_ : n ≤ m}} → VarPos n → VarPos m
-weakenVL {{ ≤r }} x = x
-weakenVL {{ ≤S p }} x = prev (weakenVL {{p}} x)
-
+{-
 weakenV : {n m : ℕ} {{_ : n ≤ m}} (p : WeakPos n) → VarPos n → VarPos m
-weakenV last x = weakenVL x
-weakenV {m = suc m} (prev wp) last = last
-weakenV {m = suc m} {{p}} (prev wp) (prev x) = prev (weakenV {{≤P p}} wp x)
+weakenV ⦃ ≤r ⦄ p x = x
+weakenV ⦃ ≤S r ⦄ last x = prev (weakenV {{r}} last x)
+weakenV ⦃ ≤S r ⦄ (prev p) last = last
+weakenV ⦃ ≤S r ⦄ (prev p) (prev x) = prev (weakenV {{≤P (≤S r)}} p x)
+-}
 
+-- weakenVL : {n m : ℕ} {{_ : n ≤ m}} → VarPos n → VarPos m
+-- weakenVL {{ ≤r }} x = x
+-- weakenVL {{ ≤S p }} x = prev (weakenVL {{p}} x)
+
+-- postulate
+--   weakenV : {n m : ℕ} {{_ : n ≤ m}} (p : WeakPos n) → VarPos n → VarPos m
+-- weakenV {m = _} ⦃ ≤r ⦄ last last = last
+-- weakenV {m = _} ⦃ ≤S r ⦄ last last = prev (weakenV {{r}} last last)
+-- weakenV {m = suc m} ⦃ r ⦄ (prev p) last = last
+-- weakenV {m = suc m} ⦃ ≤r ⦄ last (prev x) = prev x
+-- weakenV {m = suc m} ⦃ ≤S r ⦄ last (prev x) = prev (weakenV {m = m} {{≤P (≤S r)}} last x)
+-- weakenV {m = suc m} ⦃ r ⦄ (prev p) (prev x) = prev (weakenV {m = m} {{≤P r}} p x)
+
+-- weakenV {m = suc m}       (prev wp) last = last
+-- weakenV {m = suc m} {{p}} (prev wp) (prev x) = prev (weakenV {{≤P p}} wp x)
+-- weakenV {m = suc m} ⦃ ≤r ⦄ last x = x
+-- weakenV {m = suc m} ⦃ ≤S r ⦄ last x = prev (weakenV {{r}} last x)
 
 -- weakenV {m = suc m} ⦃ p ⦄ (prev wp) last = last
 -- weakenV {m = suc m} ⦃ p ⦄ (prev wp) (prev x) = prev (weakenV {{≤P p}} wp x)
@@ -90,7 +104,7 @@ weaken p (var x) = var (weakenV p x)
 weaken p (sym s es) = sym s (weakenA p es)
 
 weakenA p [] = []
-weakenA {{q}} p (_,_ {m = m} es e) = (weakenA p es , weaken {{≤+ m {{q}}}} (weakenWeakPos2 {{≤-+ {m = m}}} p) e)
+weakenA {{q}} p (_,_ {m = m} es e) = (weakenA p es , weaken {{≤+ m {{q}}}} (weakenPos (≤-+ {m = m}) p) e)
 
 
 weaken' : {Σ : Signature} {k : _} {n m : ℕ} {{_ : n ≤ m}} (p : WeakPos n) → Expr Σ n k → Expr Σ m k
@@ -366,7 +380,7 @@ SubstM : {Σ Σ' : Signature} {m : ℕ} {args : SyntaxArityArgs}
       → ((ExtSig^ Σ args) →Sig Σ') m
 SubstM ↑ [] = ↑
 SubstM ↑ (as , a) $ prev s = SubstM ↑ as $ s
-(_$_ (SubstM {m = n} ↑ (_,_ {m = l} as a)) new) bs = Subst (weaken' {{≤+ l}} (prev^last _ l) a) bs
+(SubstM ↑ (_,_ {m = l} as a)) $ new = Subst (weaken' {{≤+ l}} (prev^last _ l) a)
 
 subst : {n m : ℕ} {k : SyntaxSort} {Σ Σ' : Signature} (↑ : (Σ →Sig Σ') n) {args : SyntaxArityArgs} (as : Args Σ' (n + m) args)
       → Expr (ExtSig^ Σ args) (n + m) k

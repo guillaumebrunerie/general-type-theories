@@ -182,5 +182,14 @@ _,1Tm=_ : ∀ {Σ} {E} {m} {Γ : Ctx Σ m} {u v : _} {A : _} {B : _}
         → DerivableArgs E (js , (◇ , B) ⊢ u == v :> A)
 djs ,1Tm= dj = djs , dj
 
+
+_,2Tm_ : ∀ {Σ} {E} {m} {Γ : Ctx Σ m} {u : _} {A : _} {B : _} {C : _}
+        {ar : JudgmentArityArgs} {js : DerivationRulePremises Σ Γ ar}
+        → DerivableArgs E js
+        → Derivable E (exchange ((◇ , B , C) ⊢ u :> A))
+        → DerivableArgs E (js , (◇ , B , C) ⊢ u :> A)
+djs ,2Tm dj = djs , dj
+
 infixl 4 _,0Ty_ _,0Ty=_ _,0Tm_ _,0Tm=_
          _,1Ty_ _,1Ty=_ _,1Tm_ _,1Tm=_
+                        _,2Tm_

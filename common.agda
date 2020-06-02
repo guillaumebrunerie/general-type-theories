@@ -285,14 +285,20 @@ data WeakPos : ℕ → Set where
   last : {n : ℕ} → WeakPos n
   prev : {n : ℕ} → WeakPos n → WeakPos (suc n)
 
--- weakPosAt : {m : ℕ} (n : ℕ) → WeakPos (m + n)
--- weakPosAt zero = last
--- weakPosAt (suc n) = prev (weakPosAt n)
+weakenPos : {n m : ℕ} → n ≤ m → WeakPos n → WeakPos m
+weakenPos ≤r k = k
+weakenPos (≤S p) k = prev (weakenPos p k)
 
--- weakenWeakPos : {n : ℕ} (m : ℕ) → WeakPos n → WeakPos (n + m)
--- weakenWeakPos zero k = k
--- weakenWeakPos (suc m) k = prev (weakenWeakPos m k)
+{- Weakening by a group of variable in the middle of a context -}
 
-weakenWeakPos2 : {n m : ℕ} {{_ : n ≤ m}} → WeakPos n → WeakPos m
-weakenWeakPos2 ⦃ ≤r ⦄ k = k
-weakenWeakPos2 ⦃ ≤S p ⦄ k = prev (weakenWeakPos2 {{p}} k)
+weakenV : {n m : ℕ} {{_ : n ≤ m}} (p : WeakPos n) → VarPos n → VarPos m
+weakenV {m = suc m} ⦃ r ⦄ (prev p) last = last
+weakenV ⦃ ≤r ⦄ p x = x
+weakenV ⦃ ≤S r ⦄ last x = prev (weakenV {{r}} last x)
+weakenV ⦃ ≤S r ⦄ (prev p) (prev x) = prev (weakenV {{≤P (≤S r)}} p x)
+
+weakenV≤r : {n : ℕ} {p : WeakPos n} {v : VarPos n} → weakenV {{≤r}} p v ≡ v
+weakenV≤r {p = last} {last} = refl
+weakenV≤r {p = prev p} {last} = refl
+weakenV≤r {p = last} {prev v} = refl
+weakenV≤r {p = prev p} {prev v} = refl

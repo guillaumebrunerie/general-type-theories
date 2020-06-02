@@ -24,7 +24,7 @@ TTDer : (t : TypeTheory) → DerivabilityStructure (TTSig t)
 data TypeTheory where
   ◇ : TypeTheory
   _,_ : (t : TypeTheory) {ar : SyntaxArity} (r : TypingRule (TTDer t) (args ar) (sort ar)) → TypeTheory
-  _,=_ : (t : TypeTheory) {ar : SyntaxArityArgs} {k : JudgmentSort} (r : EqualityRule (TTDer t) ar k) → TypeTheory
+  _,=_ : (t : TypeTheory) {ar : SyntaxArityArgs} {k : SyntaxSort} (r : EqualityRule (TTDer t) ar k) → TypeTheory
 
 TTSig ◇ = Σ₀
 TTSig (_,_ t {ar} r) = ExtSig (TTSig t) ar
@@ -32,8 +32,7 @@ TTSig (t ,= _) = TTSig t
 
 TTDer ◇ = E₀
 TTDer (t , r) = extend (TTDer t) (TRules r)
-TTDer (t ,= r) = extendE (TTDer t) (ERule _ r)
-
+TTDer (t ,= r) = extendE (TTDer t) (ERule r)
 
 {- Instances to make it possible to use numeric literals to refer to symbols and typing rules -}
 

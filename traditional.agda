@@ -33,10 +33,10 @@ data Judgment : Set where
   _⊢_==_ : {n : ℕ} (Γ : Ctx n) → TyExpr n → TyExpr n → Judgment
   _⊢_==_:>_ : {n : ℕ} (Γ : Ctx n) → TmExpr n → TmExpr n → TyExpr n → Judgment
 
-weakenV : {n : ℕ} (p : WeakPos n) → VarPos n → VarPos (suc n)
-weakenV last x = prev x
-weakenV (prev p) last = last
-weakenV (prev p) (prev x) = prev (weakenV p x)
+-- weakenV : {n : ℕ} (p : WeakPos n) → VarPos n → VarPos (suc n)
+-- weakenV last x = prev x
+-- weakenV (prev p) last = last
+-- weakenV (prev p) (prev x) = prev (weakenV p x)
 
 weaken : {n : ℕ} {k : SyntaxSort} (p : WeakPos n) → Expr k n → Expr k (suc n)
 weaken p uu = uu
@@ -46,15 +46,26 @@ weaken p (var x) = var (weakenV p x)
 weaken p (lam A B u) = lam (weaken p A) (weaken (prev p) B) (weaken (prev p) u)
 weaken p (app A B f a) = app (weaken p A) (weaken (prev p) B) (weaken p f) (weaken p a)
 
-data Mor (n m : ℕ) : ℕ → Set where 
- ◇ : Mor n m 0
- _,_ : {k : ℕ} (δ : Mor n m k) (u : TmExpr (n + m)) → Mor n m (suc k)
+-- data Mor (n m : ℕ) : ℕ → Set where 
+--  ◇ : Mor n m 0
+--  _,_ : {k : ℕ} (δ : Mor n m k) (u : TmExpr (n + m)) → Mor n m (suc k)
 
-weakenMor : Mor n m k → Mor n (suc m) k
+-- weakenMor : Mor n m k → Mor n (suc m) k
+-- weakenMor ◇ = ◇
+-- weakenMor (δ , u) = (weakenMor δ , weaken last u)
+
+-- weakenMor+ : Mor n m k → Mor n (suc m) (suc k)
+-- weakenMor+ δ = weakenMor δ , var last
+
+data Mor (m : ℕ) : ℕ → Set where 
+ ◇ : Mor m 0
+ _,_ : {k : ℕ} (δ : Mor m k) (u : TmExpr m) → Mor m (suc k)
+
+weakenMor : Mor m k → Mor (suc m) k
 weakenMor ◇ = ◇
 weakenMor (δ , u) = (weakenMor δ , weaken last u)
 
-weakenMor+ : Mor n m k → Mor n (suc m) (suc k)
+weakenMor+ : Mor m k → Mor (suc m) (suc k)
 weakenMor+ δ = weakenMor δ , var last
 
 weakV : {n m : ℕ} → VarPos n → VarPos (n + m)
@@ -63,20 +74,24 @@ weakV {m = suc m} x = prev (weakV x)
 
 infix 30 _[_]
 
-_[_] : {p : SyntaxSort} (A : Expr p (n + k)) (δ : Mor n m k) → Expr p (n + m)
+-- _[_] : {p : SyntaxSort} (A : Expr p (n + k)) (δ : Mor n m k) → Expr p (n + m)
+_[_] : {p : SyntaxSort} (A : Expr p k) (δ : Mor m k) → Expr p m
 
 uu [ δ ] = uu
 el v [ δ ] = el (v [ δ ])
 pi A B [ δ ] = pi (A [ δ ]) (B [ weakenMor+ δ ])
 
-var x [ ◇ ] = var (weakV x)
 var last [ δ , u ] = u
 var (prev x) [ δ , u ] = var x [ δ ]
 lam A B u [ δ ] = lam (A [ δ ]) (B [ weakenMor+ δ ]) (u [ weakenMor+ δ ])
 app A B f a [ δ ] = app (A [ δ ]) (B [ weakenMor+ δ ]) (f [ δ ]) (a [ δ ])
 
+idMor : Mor n n
+idMor {zero} = ◇
+idMor {suc n} = (weakenMor idMor , var last)
+
 subst : {n : ℕ} {k : SyntaxSort} → Expr k (suc n) → TmExpr n → Expr k n
-subst e a = e [ ◇ , a ]
+subst e a = e [ idMor , a ]
 
 get : {n : ℕ} → VarPos n → Ctx n → TyExpr n
 get last (Γ , A) = weaken last A
@@ -157,9 +172,9 @@ data Derivable : Judgment → Prop where
   BetaPi : {n : ℕ} {Γ : Ctx n} {A : TyExpr n} {B : TyExpr (suc n)} {u : TmExpr (suc n)} {a : TmExpr n}
     → Derivable (Γ ⊢ A) → Derivable ((Γ , A) ⊢ B) → Derivable ((Γ , A) ⊢ u :> B) → Derivable (Γ ⊢ a :> A)
     → Derivable (Γ ⊢ app A B (lam A B u) a == subst u a :> subst B a)
-  -- EtaPi : {n : ℕ} {Γ : Ctx n} {A : TyExpr n} {B : TyExpr (suc n)} {f : TmExpr n}
-  --   → Derivable (Γ ⊢ A) → Derivable ((Γ , A) ⊢ B) → Derivable (Γ ⊢ f :> pi A B)
-  --   → Derivable (Γ ⊢ f == lam A B (app (weaken A) {!weaken' (prev last) B!} (weaken f) (var last)) :> pi A B)
+  EtaPi : {n : ℕ} {Γ : Ctx n} {A : TyExpr n} {B : TyExpr (suc n)} {f : TmExpr n}
+    → Derivable (Γ ⊢ A) → Derivable ((Γ , A) ⊢ B) → Derivable (Γ ⊢ f :> pi A B)
+    → Derivable (Γ ⊢ f == lam A B (app (weaken last A) (weaken (prev last) B) (weaken last f) (var last)) :> pi A B)
 
 data DepCtx (n : ℕ) : ℕ → Set where
   ◇ : DepCtx n 0
@@ -171,18 +186,6 @@ _++_ : {n m : ℕ} → Ctx n → DepCtx n m → Ctx (n + m)
 
 infixl 30 _++_
 
-data _⊢_===_ (Γ : Ctx n) : DepCtx n m → DepCtx n m → Prop where
-  tt : Γ ⊢ ◇ === ◇
-  _,_ : {Δ Δ' : DepCtx n m} {A A' : TyExpr (n + m)} → (Γ ⊢ Δ === Δ') → Derivable ((Γ ++ Δ) ⊢ A == A') → Γ ⊢ (Δ , A) === (Δ' , A')
-
-
-data _⊢_∷>_⇒_ (Γ : Ctx n) : Mor n m k → DepCtx n m → DepCtx n k → Prop where
-  tt : {Δ : DepCtx n m} → Γ ⊢ ◇ ∷> Δ ⇒ ◇
-  _,_ : {Δ : DepCtx n m} {Δ' : DepCtx n k} {δ : Mor n m k} {u : TmExpr (n + m)} {A : TyExpr (n + k)}
-      → Γ ⊢ δ ∷> Δ ⇒ Δ'
-      → Derivable (Γ ++ Δ ⊢ u :> (A [ δ ]))
-      → Γ ⊢ (δ , u) ∷> Δ ⇒ (Δ' , A)
-
 _-WeakPos_ : (n : ℕ) → WeakPos n → ℕ
 n -WeakPos last = n
 suc n -WeakPos prev k = n -WeakPos k
@@ -190,6 +193,18 @@ suc n -WeakPos prev k = n -WeakPos k
 weakenCtx : (k : WeakPos n) (Γ : Ctx n) (T : TyExpr (n -WeakPos k)) → Ctx (suc n)
 weakenCtx last Γ T = Γ , T
 weakenCtx (prev k) (Γ , A) T = weakenCtx k Γ T , weaken k A 
+
+-- data _⊢_===_ (Γ : Ctx n) : DepCtx n m → DepCtx n m → Prop where
+--   tt : Γ ⊢ ◇ === ◇
+--   _,_ : {Δ Δ' : DepCtx n m} {A A' : TyExpr (n + m)} → (Γ ⊢ Δ === Δ') → Derivable ((Γ ++ Δ) ⊢ A == A') → Γ ⊢ (Δ , A) === (Δ' , A')
+
+
+-- data _⊢_∷>_⇒_ (Γ : Ctx n) : Mor n m k → DepCtx n m → DepCtx n k → Prop where
+--   tt : {Δ : DepCtx n m} → Γ ⊢ ◇ ∷> Δ ⇒ ◇
+--   _,_ : {Δ : DepCtx n m} {Δ' : DepCtx n k} {δ : Mor n m k} {u : TmExpr (n + m)} {A : TyExpr (n + k)}
+--       → Γ ⊢ δ ∷> Δ ⇒ Δ'
+--       → Derivable (Γ ++ Δ ⊢ u :> (A [ δ ]))
+--       → Γ ⊢ (δ , u) ∷> Δ ⇒ (Δ' , A)
 
 -- WeakTy : {k : WeakPos n} {Γ : Ctx n} {T : TyExpr (n -WeakPos k)} {A : TyExpr n}
 --      → Derivable (Γ ⊢ A) → Derivable (weakenCtx k Γ T ⊢ weaken k A)

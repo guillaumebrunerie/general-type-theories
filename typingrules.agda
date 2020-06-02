@@ -287,7 +287,7 @@ TypingRule-TArgs E ↑ (ts , Ty t's) (js , Δ ⊢ A) = do
   as ← TypingRule-TArgs E ↑ ts js
   assume (check-DepCtx ↑ as t's Δ)
   return (as , A)
-TypingRule-TArgs E {m = m} ↑ (ts , Tm t's t) (js , Δ ⊢ u :> A) = do
+TypingRule-TArgs E {m = m} ↑ (ts , Tm t's t) (_,_ {m = m'} js (Δ ⊢ u :> A)) = do
   as ← TypingRule-TArgs E ↑ ts js
   assume (check-DepCtx ↑ as t's Δ)
   assume (A ≡ ↑Expr (SubstM (liftSig ↑) (weakenAL as)) (↑Expr (SubstM idSig (Vars m)) (weaken0 (type t))))
@@ -390,16 +390,16 @@ record TermEquality {Σ : Signature} (E : DerivabilityStructure Σ) : Set where
     der2 : Derivable E {Γ = ◇} (◇ ⊢ term2 :> type)
 open BMTypingRule public
 
-data EqualityRule {Σ : Signature} (E : DerivabilityStructure Σ) (args : SyntaxArityArgs) : (k : JudgmentSort) → Set where
-  Ty= : (ts : TypingRulePremises E args) (A B : BMTypingRule (extend^M E ts)) → EqualityRule E args Ty=
-  Tm= : (ts : TypingRulePremises E args) (A : TermEquality (extend^M E ts)) → EqualityRule E args Tm=
+data EqualityRule {Σ : Signature} (E : DerivabilityStructure Σ) (args : SyntaxArityArgs) : (k : SyntaxSort) → Set where
+  Ty= : (ts : TypingRulePremises E args) (A B : BMTypingRule (extend^M E ts)) → EqualityRule E args Ty
+  Tm= : (ts : TypingRulePremises E args) (A : TermEquality (extend^M E ts)) → EqualityRule E args Tm
 
-ERule : {Σ : Signature} (E : DerivabilityStructure Σ) {args : SyntaxArityArgs} {k : JudgmentSort}
+ERule : {Σ : Signature} {E : DerivabilityStructure Σ} {args : SyntaxArityArgs} {k : SyntaxSort}
         → EqualityRule E args k
-        → DerivationRule Σ (TArityArgs args , k)
-rule (ERule E (Ty= ts A B)) ↑ Γ js = do
+        → DerivationRule Σ (TArityArgs args , SStoJS= k)
+rule (ERule {E = E} (Ty= ts A B)) ↑ Γ js = do
   as ← TypingRule-TArgs E ↑ ts js
   return (◇ ⊢ (↑Expr (SubstM ↑ as) (weaken0 (A .type))) == (↑Expr (SubstM ↑ as) (weaken0 (B .type))))
-rule (ERule E (Tm= ts (A <: u / _ // v / _))) ↑ Γ js = do
+rule (ERule {E = E} (Tm= ts (A <: u / _ // v / _))) ↑ Γ js = do
   as ← TypingRule-TArgs E ↑ ts js
-  return (◇ ⊢ (↑Expr (SubstM ↑ as) (weaken0 u)) == (↑Expr (SubstM ↑ as) (weaken0 u)) :> ↑Expr (SubstM ↑ as) (weaken0 A))
+  return (◇ ⊢ (↑Expr (SubstM ↑ as) (weaken0 u)) == (↑Expr (SubstM ↑ as) (weaken0 v)) :> ↑Expr (SubstM ↑ as) (weaken0 A))
